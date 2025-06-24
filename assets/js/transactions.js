@@ -207,30 +207,22 @@ function deleteTransaction(id) {
     });
 }
 
-// Pindahkan handler form ke function terpisah
 async function handleFormSubmit(e) {
     e.preventDefault();
     const form = e.target;
     const formData = new FormData(form);
-    
+
+    // Pastikan product_id ikut dikirim jika income
+    const type = form.querySelector('[name="type"]').value;
+    let productId = null;
+    if (type === 'income') {
+        productId = form.querySelector('[name="product_id"]').value;
+        formData.set('product_id', productId);
+    } else {
+        formData.delete('product_id');
+    }
+
     try {
-        // Check if this is a savings transaction
-        const categoryOption = form.querySelector('select[name="category"]').selectedOptions[0];
-        if (categoryOption.text.trim() === 'Savings') {
-            const targetSelect = form.querySelector('#savingsTargetSelect');
-            if (targetSelect.value) {
-                const targetOption = targetSelect.selectedOptions[0];
-                const remaining = parseFloat(targetOption.dataset.remaining);
-                const amount = parseFloat(formData.get('amount'));
-                
-                if (amount > remaining) {
-                    throw new Error(`Amount exceeds remaining target (${formatCurrency(remaining)})`);
-                }
-                
-                formData.append('savings_target_id', targetSelect.value);
-            }
-        }
-        
         // Show loading
         Swal.fire({
             title: 'Saving...',
@@ -252,10 +244,8 @@ async function handleFormSubmit(e) {
                 timer: 1500,
                 showConfirmButton: false
             }).then(() => {
-                form.reset();
-                loadTransactions();
-                typeSelect.value = 'income';
-                typeSelect.dispatchEvent(new Event('change'));
+                // Auto reload agar stok, dropdown, dsb selalu sinkron
+                location.reload();
             });
         } else {
             throw new Error(result.message);
@@ -286,8 +276,7 @@ function updateExpenseChart(data) {
                 borderWidth: 1
             }]
         },
-        // ...rest of existing code...
+
     });
     
-    // ...rest of existing code...
 }
