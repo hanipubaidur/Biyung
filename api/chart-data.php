@@ -11,7 +11,6 @@ define('EXPENSE_CATEGORIES', [
     'Shopping' => '#858796',
     'Education' => '#5a5c69',
     'Debt/Loan' => '#2c9faf',
-    'Savings' => '#7E57C2',
     'Other' => '#4A5568'
 ]);
 
@@ -174,7 +173,6 @@ try {
                 AND MONTH(t.date) = MONTH(CURRENT_DATE)
                 AND YEAR(t.date) = YEAR(CURRENT_DATE)
             )
-            WHERE ec.category_name != 'Savings'
             GROUP BY ec.id, ec.category_name, ec.budget_limit
             HAVING total > 0
             ORDER BY total DESC
@@ -213,7 +211,6 @@ try {
             AND MONTH(t.date) = MONTH(CURRENT_DATE)
             AND YEAR(t.date) = YEAR(CURRENT_DATE)
         )
-        WHERE ec.category_name != 'Savings'
         GROUP BY ec.id, ec.category_name
         HAVING total > 0
         ORDER BY total DESC";
@@ -302,6 +299,159 @@ try {
                 'expense' => array_column($completeData, 'expense'),
                 'net' => array_column($completeData, 'net')
             ]
+        ]);
+        exit;
+    }
+    elseif ($type === 'product_sales') {
+        $period = $_GET['period'] ?? 'month';
+        if ($period === 'year') {
+            $startYear = date('Y') - 4;
+            $query = "SELECT 
+                p.id as product_id,
+                p.name as product_name,
+                p.price as product_price,
+                YEAR(t.date) as period_label,
+                COUNT(t.id) as qty
+            FROM transactions t
+            INNER JOIN products p ON t.product_id = p.id
+            WHERE t.type = 'income'
+                AND t.status = 'completed'
+                AND YEAR(t.date) >= $startYear
+                AND p.is_active = 1
+            GROUP BY p.id, p.name, p.price, period_label
+            ORDER BY p.name, p.price, period_label";
+            $labels = [];
+            for ($y = $startYear; $y <= date('Y'); $y++) $labels[] = (string)$y;
+        } elseif ($period === 'month') {
+            $year = date('Y');
+            $query = "SELECT 
+                p.id as product_id,
+                p.name as product_name,
+                p.price as product_price,
+                MONTH(t.date) as period_num,
+                DATE_FORMAT(t.date, '%b') as period_label,
+                COUNT(t.id) as qty
+            FROM transactions t
+            INNER JOIN products p ON t.product_id = p.id
+            WHERE t.type = 'income'
+                AND t.status = 'completed'
+                AND YEAR(t.date) = $year
+                AND p.is_active = 1
+            GROUP BY p.id, p.name, p.price, period_num, period_label
+            ORDER BY p.name, p.price, period_num";
+            $labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        } elseif ($period === 'week') {
+            $year = date('Y');
+            $query = "SELECT 
+                p.id as product_id,
+                p.name as product_name,
+                p.price as product_price,
+                YEARWEEK(t.date, 1) as period_num,
+                CONCAT('W', WEEK(t.date, 1) - WEEK(DATE_FORMAT(t.date, '%Y-01-01'), 1) + 1, ' ', DATE_FORMAT(t.date, '%b')) as period_label,
+                COUNT(t.id) as qty
+            FROM transactions t
+            INNER JOIN products p ON t.product_id = p.id
+            WHERE t.type = 'income'
+                AND t.status = 'completed'
+                AND YEAR(t.date) = $year
+                AND p.is_active = 1
+            GROUP BY p.id, p.name, p.price, period_num, period_label
+            ORDER BY p.name, p.price, period_num";
+            $labels = [];
+            $start = new DateTime("$year-01-01");
+            $end = new DateTime("$year-12-31");
+            while ($start <= $end) {
+                $weekNum = (int)$start->format('W');
+                $month = $start->format('M');
+                $label = "W" . ($weekNum - (int)(new DateTime("$year-01-01"))->format('W') + 1) . " $month";
+                if (!in_array($label, $labels)) $labels[] = $label;
+                $start->modify('+7 days');
+            }
+        } else {
+            $year = date('Y');
+            $month = date('m');
+            $query = "SELECT 
+                p.id as product_id,
+                p.name as product_name,
+                p.price as product_price,
+                DAY(t.date) as period_num,
+                DATE_FORMAT(t.date, '%d %b') as period_label,
+                COUNT(t.id) as qty
+            FROM transactions t
+            INNER JOIN products p ON t.product_id = p.id
+            WHERE t.type = 'income'
+                AND t.status = 'completed'
+                AND YEAR(t.date) = $year
+                AND MONTH(t.date) = $month
+                AND p.is_active = 1
+            GROUP BY p.id, p.name, p.price, period_num, period_label
+            ORDER BY p.name, p.price, period_num";
+            $days = (int)date('t');
+            $labels = [];
+            for ($d = 1; $d <= $days; $d++) {
+                $labels[] = str_pad($d, 2, '0', STR_PAD_LEFT) . ' ' . date('M', strtotime("$year-$month-$d"));
+            }
+        }
+
+        $stmt = $conn->query($query);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Susun data: labels = period_label, datasets = per produk+harga (qty integer, tidak koma)
+        $products = [];
+        $productInfo = []; // Untuk info detail produk
+        foreach ($rows as $row) {
+            $key = $row['product_name'] . ' (Rp' . number_format($row['product_price'], 0, ',', '.') . ')';
+            if (!isset($products[$key])) $products[$key] = [];
+            $products[$key][$row['period_label']] = (int)$row['qty'];
+            // Simpan info produk (nama, harga, id)
+            $productInfo[$key] = [
+                'product_id' => $row['product_id'],
+                'product_name' => $row['product_name'],
+                'product_price' => (int)$row['product_price']
+            ];
+        }
+        // Build datasets
+        $datasets = [];
+        $colorList = [
+            '#4e73df','#1cc88a','#36b9cc','#f6c23e','#e74a3b','#858796','#5a5c69','#2c9faf','#7E57C2','#4A5568'
+        ];
+        $colorIdx = 0;
+        foreach ($products as $productLabel => $sales) {
+            $data = [];
+            foreach ($labels as $label) {
+                $data[] = isset($sales[$label]) ? (int)$sales[$label] : 0;
+            }
+            $datasets[] = [
+                'label' => $productLabel,
+                'data' => $data,
+                'backgroundColor' => $colorList[$colorIdx % count($colorList)],
+                'borderColor' => $colorList[$colorIdx % count($colorList)],
+                'fill' => false,
+                // Tambahan info produk
+                'product_id' => $productInfo[$productLabel]['product_id'],
+                'product_name' => $productInfo[$productLabel]['product_name'],
+                'product_price' => $productInfo[$productLabel]['product_price']
+            ];
+            $colorIdx++;
+        }
+
+        // Tambahkan summary total terjual per produk
+        $summary = [];
+        foreach ($datasets as $ds) {
+            $totalQty = array_sum($ds['data']);
+            $summary[] = [
+                'product_id' => $ds['product_id'],
+                'product_name' => $ds['product_name'],
+                'product_price' => $ds['product_price'],
+                'total_qty' => $totalQty
+            ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'labels' => $labels,
+            'datasets' => $datasets,
+            'summary' => $summary // Untuk tabel/analisis tambahan di frontend
         ]);
         exit;
     }
