@@ -15,6 +15,9 @@ try {
     // Ambil data employee aktif untuk dropdown Salary
     $employees = $conn->query("SELECT id, name FROM employees WHERE status='active' ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
 
+    // Ambil produk aktif untuk dropdown income
+    $products = $conn->query("SELECT id, name, stock, price FROM products WHERE is_active=1 ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+
 } catch(PDOException $e) {
     die("Connection failed: " . $e->getMessage());
 }
@@ -65,11 +68,32 @@ ob_start();
                             </div>
                         </div>
                     </div>
+                    <div class="mb-3" id="productSelectSection" style="display:none;">
+                        <label class="form-label">Product</label>
+                        <select class="form-select" name="product_id" id="productSelectDropdown">
+                            <option value="">-- Select Product --</option>
+                            <?php foreach($products as $prod): ?>
+                                <?php if ($prod['stock'] > 0): ?>
+                                    <option value="<?= $prod['id'] ?>" data-price="<?= $prod['price'] ?>">
+                                        <?= htmlspecialchars($prod['name']) ?> (Stok: <?= $prod['stock'] ?>, Harga: Rp<?= number_format($prod['price'],0,',','.') ?>)
+                                    </option>
+                                <?php else: ?>
+                                    <option value="<?= $prod['id'] ?>" disabled class="text-muted">
+                                        <?= htmlspecialchars($prod['name']) ?> <span class="text-danger">(Stok habis)</span>
+                                    </option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
+                        <div id="productStockInfo" class="form-text text-muted mt-1"></div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Amount</label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
-                            <input type="number" class="form-control" name="amount" required>
+                            <input type="number" class="form-control" name="amount" id="amountInput" required>
+                        </div>
+                        <div class="form-text text-muted" id="amountInfo">
+                            Untuk transaksi produk, Amount = harga produk per item.
                         </div>
                     </div>
                 </div>
@@ -126,7 +150,63 @@ ob_start();
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Show product dropdown if income
+    function updateProductDropdown() {
+        const typeSelect = document.getElementById('transactionType');
+        const productSection = document.getElementById('productSelectSection');
+        if (typeSelect.value === 'income') {
+            productSection.style.display = '';
+        } else {
+            productSection.style.display = 'none';
+            productSection.querySelector('select').value = '';
+            document.getElementById('productStockInfo').textContent = '';
+        }
+    }
+    document.getElementById('transactionType').addEventListener('change', updateProductDropdown);
+    updateProductDropdown();
 
+    // Tampilkan sisa stok dan harga saat produk dipilih, serta auto-isi amount
+    const productSelect = document.getElementById('productSelectDropdown');
+    const stockInfo = document.getElementById('productStockInfo');
+    const amountInput = document.getElementById('amountInput');
+    if (productSelect) {
+        productSelect.addEventListener('change', function() {
+            updateProductStockInfo();
+        });
+    }
+
+    // Fungsi update info stok & harga (bisa dipanggil ulang)
+    function updateProductStockInfo() {
+        const selected = productSelect.options[productSelect.selectedIndex];
+        if (!selected || !selected.value) {
+            stockInfo.textContent = '';
+            if (amountInput) amountInput.value = '';
+            return;
+        }
+        // Ambil stok dari label option
+        const stokMatch = selected.text.match(/\(Stok: (\d+)[^)]*\)/);
+        if (stokMatch) {
+            const stok = stokMatch[1];
+            stockInfo.textContent = 'Sisa stok: ' + stok;
+        } else if (selected.text.includes('Stok habis')) {
+            stockInfo.textContent = 'Stok habis';
+        } else {
+            stockInfo.textContent = '';
+        }
+        // Auto-isi harga ke amount jika ada data-price
+        if (selected.dataset.price && amountInput) {
+            amountInput.value = selected.dataset.price;
+        }
+    }
+
+    // Update stok produk di dropdown setelah transaksi income berhasil
+    window.updateProductStockAfterTransaction = function(productId) {
+        // Tidak perlu lagi, karena akan reload halaman
+    };
+});
+</script>
 <?php
 $pageContent = ob_get_clean();
 $pageScript = '<script src="assets/js/transactions.js"></script>';
