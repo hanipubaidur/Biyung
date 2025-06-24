@@ -2,14 +2,19 @@
 
 ## 📝 Pembaruan Terbaru
 - 🟢 Perbaikan logika badge status Surplus/Deficit/Break Even/No Data pada Monthly Comparison Table
-- 🟣 Validasi savings target: jika input melebihi kekurangan target, hanya kekurangannya yang masuk ke target
 - 🟡 Export Excel hanya menampilkan data yang ada di database, judul dan emoji tetap cantik
 - 🔵 Perbaikan tampilan dan logika timestamp dashboard (tampil "No transactions yet" jika kosong)
-- 🟠 Perbaikan query dan tampilan dashboard stats (income/expense/savings per periode)
+- 🟠 Perbaikan query dan tampilan dashboard stats (income/expense per periode)
 - 🟤 Konsistensi format currency dan animasi progress bar
 - ⚡ Optimasi query dan pengelolaan kategori (soft/hard delete)
-- 🟤 Perbaikan validasi form transaksi dan savings
+- 🟤 Perbaikan validasi form transaksi
 - 🟢 Penambahan dan perbaikan style badge, alignment, dan tabel
+- 🔶 Penambahan kolom nama produk, harga produk, dan total terjual di laporan ekspor (Excel) dan summary chart.
+- 🔷 Transaction Master di export Excel kini menampilkan nama produk & harga produk.
+- 🔶 Perbaikan tampilan dan logika chart penjualan produk (qty integer, tidak koma, info produk lengkap).
+- 🔷 Penambahan tabel ringkasan produk terjual di halaman laporan.
+- 🔶 Penyesuaian query dan tampilan pada form transaksi, laporan, dan ekspor agar konsisten dengan analisis produk.
+- 🔷 Perbaikan minor pada UI dan validasi form transaksi.
 
 <div align="center">
   
@@ -43,7 +48,7 @@ Aplikasi ini dibuat khusus untuk pencatatan keuangan usaha Biyung Ubi Ungu.
   - Instagram: [@biyungubiungu.jogja](https://www.instagram.com/biyungubiungu.jogja)
 
 Fitur utama: pencatatan pemasukan (cash, transfer/e-wallet, QRIS), pengeluaran modal, gaji karyawan (dengan dropdown karyawan), dan pengeluaran lain-lain.  
-Manajemen karyawan terintegrasi, tanpa fitur savings/target seperti MoneyFlow.
+Manajemen karyawan terintegrasi.
 
 ---
 
@@ -75,12 +80,6 @@ Manajemen karyawan terintegrasi, tanpa fitur savings/target seperti MoneyFlow.
 ### ✨ Fitur Lainnya
 
 - Export data ke Excel
-- Analisis performa pemasukan dan pengeluaran per kategori
-- Notifikasi dan validasi otomatis pada form
-- Soft/hard delete kategori (tidak menghapus data historis)
-- Badge status keuangan (Surplus/Deficit/Break Even/No Data)
-- Progress bar dan animasi pada dashboard
-
 ## 🛠️ Teknologi yang Digunakan
 - PHP 7.4+
 - MySQL 5.7+ 
