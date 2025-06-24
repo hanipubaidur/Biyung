@@ -27,46 +27,11 @@ try {
         throw new Exception('Transaction not found');
     }
 
-    // Jika ini transaksi savings dengan target, rollback progress
-    if ($transaction['type'] === 'expense' && 
-        $transaction['category_name'] === 'Savings' && 
-        $transaction['savings_type'] === 'targeted') {
-        
-        $stmt = $conn->prepare("
-            UPDATE savings_targets 
-            SET current_amount = current_amount - ?,
-                status = 'ongoing'
-            WHERE id = ? AND status = 'achieved'
-        ");
-        $stmt->execute([$transaction['amount'], $transaction['savings_target_id']]);
-    }
-
     // Hard delete transaction
     $stmt = $conn->prepare("DELETE FROM transactions WHERE id = ?");
     $result = $stmt->execute([$id]);
 
     if ($result) {
-        // Update balance tracking
-        $updateBalance = $conn->prepare("
-            UPDATE balance_tracking 
-            SET total_balance = total_balance + CASE 
-                    WHEN ? = 'expense' THEN ?
-                    ELSE -?
-                END,
-                total_savings = CASE 
-                    WHEN ? = 'Savings' THEN total_savings - ?
-                    ELSE total_savings
-                END
-            WHERE id = 1");
-        
-        $updateBalance->execute([
-            $transaction['type'],
-            $transaction['amount'],
-            $transaction['amount'],
-            $transaction['category_name'],
-            $transaction['amount']
-        ]);
-
         $conn->commit();
         echo json_encode([
             'success' => true,
@@ -77,9 +42,6 @@ try {
     }
 
 } catch(Exception $e) {
-    if ($conn) {
-        $conn->rollBack();
-    }
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage()
