@@ -210,25 +210,24 @@ try {
     $trends = $spreadsheet->createSheet();
     $trends->setTitle('📈 Trend Analysis');
     
-    // Judul dan tabel dilebarkan hingga kolom I
+    // Judul dan tabel dilebarkan hingga kolom H (bukan I)
     $trends->setCellValue('A1', '📈 ADVANCED TREND ANALYSIS & FORECASTING');
-    $trends->mergeCells('A1:I1');
+    $trends->mergeCells('A1:H1');
     $trends->getStyle('A1')->applyFromArray(['font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => 'FFFFFF']],'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['accent']]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],]);
     $trends->getRowDimension('1')->setRowHeight(30);
     
     $trendsQuery = "SELECT DATE_FORMAT(date, '%Y-%m') as period, DATE_FORMAT(date, '%b %Y') as display_period, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense FROM transactions WHERE status != 'deleted' AND date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) GROUP BY DATE_FORMAT(date, '%Y-%m'), DATE_FORMAT(date, '%b %Y') ORDER BY period ASC LIMIT 12";
     $trendsData = $conn->query($trendsQuery)->fetchAll(PDO::FETCH_ASSOC);
 
-    // Kolom analisis diperbanyak hingga I
-    $trendHeaders = ['📅 Period', '💰 Income', '💸 Expenses', '💎 Net Flow', '🏦 Savings', '⚡ Efficiency', '📈 Growth', '🎯 Score', '🔮 Forecast'];
+    // Kolom analisis diperbanyak hingga H (tanpa savings)
+    $trendHeaders = ['📅 Period', '💰 Income', '💸 Expenses', '💎 Net Flow', '⚡ Efficiency', '📈 Growth', '🎯 Score', '🔮 Forecast'];
     foreach($trendHeaders as $i => $header) { $trends->setCellValue(chr(65 + $i) . '3', $header); }
-    $trends->getStyle('A3:I3')->applyFromArray(['font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],'fill' => ['fillType' => Fill::FILL_GRADIENT_LINEAR, 'startColor' => ['rgb' => $theme['primary']], 'endColor' => ['rgb' => $theme['accent']]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],]);
+    $trends->getStyle('A3:H3')->applyFromArray(['font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],'fill' => ['fillType' => Fill::FILL_GRADIENT_LINEAR, 'startColor' => ['rgb' => $theme['primary']], 'endColor' => ['rgb' => $theme['accent']]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],]);
 
     $row = 4;
     $prevIncome = 0;
     foreach($trendsData as $data) {
         $netFlow = $data['income'] - $data['expense'];
-        $savings = max(0, $netFlow);
         $efficiency = $data['income'] > 0 ? ($netFlow / $data['income'] * 100) : 0;
         $growth = $prevIncome > 0 ? (($data['income'] - $prevIncome) / $prevIncome * 100) : 0;
         $score = min(100, max(0, $efficiency + ($growth * 0.5)));
@@ -239,7 +238,6 @@ try {
             'Rp ' . number_format($data['income']),
             'Rp ' . number_format($data['expense']),
             'Rp ' . number_format($netFlow),
-            'Rp ' . number_format($savings),
             number_format($efficiency, 1) . '%',
             ($growth >= 0 ? '▲ ' : '▼ ') . number_format(abs($growth), 1) . '%',
             number_format($score, 0),
@@ -248,73 +246,119 @@ try {
         
         foreach($values as $j => $value) { $trends->setCellValue(chr(65 + $j) . $row, $value); }
         
-        $trends->getStyle("A$row:I$row")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $netFlow >= 0 ? 'E8F5E9' : 'FBE9E7']], 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]]);
+        $trends->getStyle("A$row:H$row")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $netFlow >= 0 ? 'E8F5E9' : 'FBE9E7']], 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT]]);
         $trends->getStyle("A$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $trends->getStyle("D$row")->getFont()->applyFromArray(['bold' => true, 'color' => ['rgb' => $netFlow >= 0 ? $theme['success'] : $theme['danger']]]);
         
         $prevIncome = $data['income'];
         $row++;
     }
-    foreach(range('A', 'I') as $col) { $trends->getColumnDimension($col)->setAutoSize(true); }
+    foreach(range('A', 'H') as $col) { $trends->getColumnDimension($col)->setAutoSize(true); }
 
     // SHEET 5: TRANSACTION MASTER
     $transactions = $spreadsheet->createSheet();
     $transactions->setTitle('📋 Transaction Master');
 
-    // Tata letak diperbaiki agar semua elemen pas dari Kolom A - E
+    // Panjangkan header sampai kolom G
     $transactions->setCellValue('A1', 'COMPLETE TRANSACTION MASTER DATABASE');
-    $transactions->mergeCells('A1:E1');
-    $transactions->getStyle('A1')->applyFromArray(['font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => 'FFFFFF']],'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['secondary']]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],]);
+    $transactions->mergeCells('A1:G1');
+    $transactions->getStyle('A1')->applyFromArray([
+        'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => 'FFFFFF']],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['secondary']]],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+    ]);
     $transactions->getRowDimension('1')->setRowHeight(30);
 
-    $transHeaders = ['Date', 'Type', 'Category', 'Amount', 'Description'];
-    // Header dimulai dari Kolom A
-    foreach($transHeaders as $i => $header) { $transactions->setCellValue(chr(65 + $i).'3', $header); } 
-    $transactions->getStyle('A3:E3')->applyFromArray(['font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['accent']]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],]);
+    // Tambahkan kolom Product Name & Product Price
+    $transHeaders = ['Date', 'Type', 'Category', 'Product Name', 'Product Price', 'Amount', 'Description'];
+    foreach($transHeaders as $i => $header) { $transactions->setCellValue(chr(65 + $i).'3', $header); }
+    $transactions->getStyle('A3:G3')->applyFromArray([
+        'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['accent']]],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+    ]);
     $transactions->getRowDimension('3')->setRowHeight(20);
 
-    $transQuery = "SELECT t.date, t.type, t.amount, t.description, CASE WHEN t.type = 'income' THEN i.source_name ELSE e.category_name END as category FROM transactions t LEFT JOIN income_sources i ON t.income_source_id = i.id LEFT JOIN expense_categories e ON t.expense_category_id = e.id WHERE t.status != 'deleted' ORDER BY t.date DESC, t.id DESC LIMIT 500";
+    // Query transaksi lengkap dengan produk
+    $transQuery = "SELECT 
+        t.date, 
+        t.type, 
+        t.amount, 
+        t.description, 
+        CASE WHEN t.type = 'income' THEN i.source_name ELSE e.category_name END as category,
+        p.name as product_name,
+        p.price as product_price
+    FROM transactions t
+    LEFT JOIN income_sources i ON t.income_source_id = i.id
+    LEFT JOIN expense_categories e ON t.expense_category_id = e.id
+    LEFT JOIN products p ON t.product_id = p.id
+    WHERE t.status != 'deleted'
+    ORDER BY t.date DESC, t.id DESC
+    LIMIT 500";
     $transData = $conn->query($transQuery)->fetchAll(PDO::FETCH_ASSOC);
 
     $row = 4;
     foreach($transData as $t) {
-        $values = [date('d/m/Y', strtotime($t['date'])), ($t['type'] === 'income' ? '+' : '-') . ' ' . ucfirst($t['type']), $t['category'] ?: '-', floatval($t['amount']), $t['description'] ?: '-'];
-        // Pengisian data dimulai dari Kolom A
+        $values = [
+            date('d/m/Y', strtotime($t['date'])),
+            ($t['type'] === 'income' ? '+' : '-') . ' ' . ucfirst($t['type']),
+            $t['category'] ?: '-',
+            $t['product_name'] ?: '-',
+            $t['product_price'] ? 'Rp ' . number_format($t['product_price'], 0, ',', '.') : '-',
+            floatval($t['amount']),
+            $t['description'] ?: '-'
+        ];
         foreach($values as $i => $value) { $transactions->setCellValue(chr(65 + $i) . $row, $value); }
-        $transactions->getStyle("A$row:E$row")->applyFromArray(['fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $t['type'] === 'income' ? 'E8F5E9' : 'FBE9E7']],'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']]],'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]]);
-        
+        $transactions->getStyle("A$row:G$row")->applyFromArray([
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $t['type'] === 'income' ? 'E8F5E9' : 'FBE9E7']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']]],
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
+        ]);
         $transactions->getStyle("A$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $transactions->getStyle("B$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $transactions->getStyle("C$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-        $transactions->getStyle("D$row")->getNumberFormat()->setFormatCode('"Rp " #,##0');
-        $transactions->getStyle("D$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $transactions->getStyle("E$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $transactions->getStyle("E$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $transactions->getStyle("F$row")->getNumberFormat()->setFormatCode('"Rp " #,##0');
+        $transactions->getStyle("F$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $transactions->getStyle("G$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $row++;
     }
 
     $summaryStartRow = $row + 1;
     $transactions->setCellValue("A$summaryStartRow", "TRANSACTION SUMMARY");
-    $transactions->mergeCells("A$summaryStartRow:E$summaryStartRow");
-    $transactions->getStyle("A$summaryStartRow:E$summaryStartRow")->applyFromArray(['font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['primary']]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],]);
+    $transactions->mergeCells("A$summaryStartRow:G$summaryStartRow");
+    $transactions->getStyle("A$summaryStartRow:G$summaryStartRow")->applyFromArray([
+        'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['primary']]],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+    ]);
     
     $totalIncome = array_sum(array_column(array_filter($transData, fn($t) => $t['type'] === 'income'), 'amount'));
     $totalExpense = array_sum(array_column(array_filter($transData, fn($t) => $t['type'] === 'expense'), 'amount'));
     $netFlow = $totalIncome - $totalExpense;
-    $summaryData = [['Total Income', 'Rp ' . number_format($totalIncome), $theme['success']],['Total Expense', 'Rp ' . number_format($totalExpense), $theme['danger']],['Net Flow', 'Rp ' . number_format($netFlow), $netFlow >= 0 ? $theme['success'] : $theme['danger']]];
+    $summaryData = [
+        ['Total Income', '', '', '', '', 'Rp ' . number_format($totalIncome), $theme['success']],
+        ['Total Expense', '', '', '', '', 'Rp ' . number_format($totalExpense), $theme['danger']],
+        ['Net Flow', '', '', '', '', 'Rp ' . number_format($netFlow), $netFlow >= 0 ? $theme['success'] : $theme['danger']]
+    ];
     
     $currentRow = $summaryStartRow + 1;
     foreach ($summaryData as $data) {
         $transactions->setCellValue("A$currentRow", $data[0]);
-        $transactions->setCellValue("D$currentRow", $data[1]);
-        $transactions->mergeCells("A$currentRow:C$currentRow");
-        $transactions->mergeCells("D$currentRow:E$currentRow");
-        $transactions->getStyle("A$currentRow:E$currentRow")->applyFromArray(['font' => ['bold' => true, 'size' => 10],'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['light']]],'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]]]);
-        $transactions->getStyle("D$currentRow")->getFont()->getColor()->setRGB($data[2]);
-        $transactions->getStyle("D$currentRow")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $transactions->setCellValue("F$currentRow", $data[5]);
+        $transactions->mergeCells("A$currentRow:E$currentRow");
+        $transactions->mergeCells("F$currentRow:G$currentRow");
+        $transactions->getStyle("A$currentRow:G$currentRow")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['light']]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]]
+        ]);
+        $transactions->getStyle("F$currentRow")->getFont()->getColor()->setRGB($data[6]);
+        $transactions->getStyle("F$currentRow")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $currentRow++;
     }
 
-    foreach(range('A', 'E') as $col) { $transactions->getColumnDimension($col)->setAutoSize(true); }
+    foreach(range('A', 'G') as $col) { $transactions->getColumnDimension($col)->setAutoSize(true); }
 
     // Finalisasi
     $spreadsheet->setActiveSheetIndex(0);
