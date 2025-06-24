@@ -16,7 +16,6 @@ const REPORT_COLORS = {
         'Shopping': '#858796',
         'Education': '#5a5c69',
         'Debt/Loan': '#2c9faf',
-        'Savings': '#7E57C2',
         'Other': '#4A5568'
     }
 };
@@ -190,4 +189,9 @@ function updateExportPeriod(period) {
             datePickerContainer.style.display = 'none';
             break;
     }
+}
+
+// Panggil loadProductSalesChart jika ada elemen chart-nya
+if (document.getElementById('productSalesChart')) {
+    loadProductSalesChart();
 }
