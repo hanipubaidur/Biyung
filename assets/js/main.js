@@ -15,7 +15,6 @@ const CHART_COLORS = {
         'Entertainment': '#e74a3b',
         'Shopping': '#858796',
         'Education': '#5a5c69',
-        'Savings': '#7E57C2',
         'Other': '#4A5568'
     }
 };
