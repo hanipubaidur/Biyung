@@ -37,10 +37,6 @@ $metricsQuery = "SELECT
     COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END), 0) as total_expense,
     COALESCE(SUM(CASE 
         WHEN t.type = 'expense' AND t.expense_category_id IN (
-            SELECT id FROM expense_categories WHERE category_name = 'Savings'
-        ) THEN t.amount ELSE 0 END), 0) as savings_amount,
-    COALESCE(SUM(CASE 
-        WHEN t.type = 'expense' AND t.expense_category_id IN (
             SELECT id FROM expense_categories WHERE category_name = 'Debt/Loan'
         ) THEN t.amount ELSE 0 END), 0) as debt_amount,
     (SELECT MAX(created_at) FROM transactions 
@@ -52,11 +48,9 @@ $stmt = $conn->query($metricsQuery);
 $metrics = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Calculate metrics dengan rumus yang benar
-$net_cashflow = $metrics['total_income'] - $metrics['total_expense']; // Remove savings exclusion
-$savings_rate = $metrics['total_income'] > 0 ? 
-    ($metrics['savings_amount'] / $metrics['total_income'] * 100) : 0;
+$net_cashflow = $metrics['total_income'] - $metrics['total_expense'];
 $expense_ratio = $metrics['total_income'] > 0 ? 
-    ($metrics['total_expense'] / $metrics['total_income'] * 100) : 0; // Remove savings exclusion
+    ($metrics['total_expense'] / $metrics['total_income'] * 100) : 0;
 $debt_ratio = $metrics['total_income'] > 0 ? 
     ($metrics['debt_amount'] / $metrics['total_income'] * 100) : 0;
 
@@ -135,97 +129,103 @@ ob_start();
                     </div>
                 </div>
 
-                <!-- Monthly Comparison Chart-->
+                <!-- Monthly Comparison Table (hapus chart di atasnya) -->
                 <div class="card mt-4">
                     <div class="card-body">
-                        <div class="comparison-container">
-                            <div class="row">
-                                
+                        <div class="monthly-stats p-3 bg-light rounded">
+                            <h6 class="text-primary mb-3">Monthly Comparison</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm monthly-stats-table">
+                                    <thead>
+                                        <tr class="bg-light">
+                                            <th>Period</th>
+                                            <th class="text-end">Income</th>
+                                            <th class="text-end">Expenses</th>
+                                            <th class="text-end">Net</th>
+                                            <th class="text-end">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="monthlyStatsBody">
+                                        <?php
+                                        // Query untuk 6 bulan terakhir
+                                        $monthlyStatsQuery = "SELECT 
+                                            DATE_FORMAT(date, '%b %Y') as month,
+                                            SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
+                                            SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
+                                        FROM transactions 
+                                        WHERE date >= DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH)
+                                        AND status = 'completed'
+                                        GROUP BY DATE_FORMAT(date, '%Y-%m'), DATE_FORMAT(date, '%b %Y')
+                                        ORDER BY DATE_FORMAT(date, '%Y-%m') DESC";
 
-                                <!-- Chart Section -->
-                                <div class="col-12">
-                                    <div class="chart-section">
-                                        <div style="height: 400px; position: relative;">
-                                            <canvas id="monthlyComparisonChart"></canvas>
-                                        </div>
-                                    </div>
-                                </div>
+                                        $monthlyStats = $conn->query($monthlyStatsQuery)->fetchAll();
+                                        $totalIncome = 0;
+                                        $totalExpense = 0;
 
-                                <!-- Monthly Stats Table -->
-                                <div class="col-12 mb-4">
-                                    <div class="monthly-stats p-3 bg-light rounded">
-                                        <h6 class="text-primary mb-3">Monthly Comparison</h6>
-                                        <div class="table-responsive">
-                                            <table class="table table-sm monthly-stats-table">
-                                                <thead>
-                                                    <tr class="bg-light">
-                                                        <th>Period</th>
-                                                        <th class="text-end">Income</th>
-                                                        <th class="text-end">Expenses</th>
-                                                        <th class="text-end">Net</th>
-                                                        <th class="text-end">Status</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="monthlyStatsBody">
-                                                    <?php
-                                                    // Query untuk 6 bulan terakhir
-                                                    $monthlyStatsQuery = "SELECT 
-                                                        DATE_FORMAT(date, '%b %Y') as month,
-                                                        SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
-                                                        SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
-                                                    FROM transactions 
-                                                    WHERE date >= DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH)
-                                                    AND status = 'completed'
-                                                    GROUP BY DATE_FORMAT(date, '%Y-%m'), DATE_FORMAT(date, '%b %Y')
-                                                    ORDER BY DATE_FORMAT(date, '%Y-%m') DESC";
+                                        foreach($monthlyStats as $stat):
+                                            $netAmount = $stat['income'] - $stat['expense'];
+                                            $totalIncome += $stat['income'];
+                                            $totalExpense += $stat['expense'];
+                                            $isEmpty = ($stat['income'] == 0 && $stat['expense'] == 0);
+                                        ?>
+                                            <tr>
+                                                <td><?= $stat['month'] ?></td>
+                                                <td class="text-end"><?= formatCurrency($stat['income']) ?></td>
+                                                <td class="text-end"><?= formatCurrency($stat['expense']) ?></td>
+                                                <td class="text-end <?= $netAmount > 0 ? 'text-success' : ($netAmount < 0 ? 'text-danger' : '') ?>">
+                                                    <?= formatCurrency($netAmount) ?>
+                                                </td>
+                                                <td class="text-end">
+                                                    <?php if ($isEmpty): ?>
+                                                        <span class="badge bg-secondary">No Data</span>
+                                                    <?php elseif ($netAmount > 0): ?>
+                                                        <span class="badge bg-success">Surplus</span>
+                                                    <?php elseif ($netAmount < 0): ?>
+                                                        <span class="badge bg-danger">Deficit</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-secondary">Break Even</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="fw-bold border-top">
+                                            <td>Total</td>
+                                            <td class="text-end"><?= formatCurrency($totalIncome) ?></td>
+                                            <td class="text-end"><?= formatCurrency($totalExpense) ?></td>
+                                            <td class="text-end <?= ($totalIncome - $totalExpense) >= 0 ? 'text-success' : 'text-danger' ?>">
+                                                <?= formatCurrency($totalIncome - $totalExpense) ?>
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                                                    $monthlyStats = $conn->query($monthlyStatsQuery)->fetchAll();
-                                                    $totalIncome = 0;
-                                                    $totalExpense = 0;
-
-                                                    foreach($monthlyStats as $stat):
-                                                        $netAmount = $stat['income'] - $stat['expense'];
-                                                        $totalIncome += $stat['income'];
-                                                        $totalExpense += $stat['expense'];
-                                                        $isEmpty = ($stat['income'] == 0 && $stat['expense'] == 0);
-                                                    ?>
-                                                        <tr>
-                                                            <td><?= $stat['month'] ?></td>
-                                                            <td class="text-end"><?= formatCurrency($stat['income']) ?></td>
-                                                            <td class="text-end"><?= formatCurrency($stat['expense']) ?></td>
-                                                            <td class="text-end <?= $netAmount > 0 ? 'text-success' : ($netAmount < 0 ? 'text-danger' : '') ?>">
-                                                                <?= formatCurrency($netAmount) ?>
-                                                            </td>
-                                                            <td class="text-end">
-                                                                <?php if ($isEmpty): ?>
-                                                                    <span class="badge bg-secondary">No Data</span>
-                                                                <?php elseif ($netAmount > 0): ?>
-                                                                    <span class="badge bg-success">Surplus</span>
-                                                                <?php elseif ($netAmount < 0): ?>
-                                                                    <span class="badge bg-danger">Deficit</span>
-                                                                <?php else: ?>
-                                                                    <span class="badge bg-secondary">Break Even</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                                <tfoot>
-                                                    <tr class="fw-bold border-top">
-                                                        <td>Total</td>
-                                                        <td class="text-end"><?= formatCurrency($totalIncome) ?></td>
-                                                        <td class="text-end"><?= formatCurrency($totalExpense) ?></td>
-                                                        <td class="text-end <?= ($totalIncome - $totalExpense) >= 0 ? 'text-success' : 'text-danger' ?>">
-                                                            <?= formatCurrency($totalIncome - $totalExpense) ?>
-                                                        </td>
-                                                        <td></td>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
-                                        </div>
-                                    </div>
+                <!-- Product Sales Chart with period selector and show line toggle -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="text-primary mb-0">Product Sales Chart</h6>
+                            <div class="d-flex align-items-center gap-2">
+                                <select id="productSalesPeriod" class="form-select form-select-sm" style="width:auto;display:inline-block;">
+                                    <option value="day">Daily</option>
+                                    <option value="week">Weekly</option>
+                                    <option value="month" selected>Monthly</option>
+                                    <option value="year">Yearly</option>
+                                </select>
+                                <div class="form-check ms-2">
+                                    <input class="form-check-input" type="checkbox" id="productSalesShowLine" checked>
+                                    <label class="form-check-label" for="productSalesShowLine" style="font-size:0.95em;">Show Line</label>
                                 </div>
                             </div>
+                        </div>
+                        <div style="height:350px;">
+                            <canvas id="productSalesChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -313,7 +313,6 @@ ob_start();
                                                 AND MONTH(t.date) = MONTH(CURRENT_DATE)
                                                 AND YEAR(t.date) = YEAR(CURRENT_DATE)
                                             )
-                                            WHERE ec.category_name != 'Savings'
                                             GROUP BY ec.id, ec.category_name
                                             HAVING total > 0
                                             ORDER BY total DESC
@@ -339,63 +338,30 @@ ob_start();
                     </div>
                 </div>
 
-                <!-- Expense Breakdown by Category -->
-                <div class="card mt-4">
+                <!-- Tambahkan tabel ringkasan produk terjual di sini -->
+                <div class="card mt-4" id="productSalesSummaryCard" style="display:none;">
+                    <div class="card-header">
+                        <h6 class="mb-0">Product Sales Summary</h6>
+                    </div>
                     <div class="card-body">
-                        <h6 class="text-primary mb-3">Expense Breakdown by Category</h6>
-                        <div class="table-responsive mt-3">
-                            <table class="table table-sm">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="productSalesSummaryTable">
                                 <thead>
                                     <tr>
-                                        <th>Category</th>
-                                        <th>Amount</th>
-                                        <th>%</th>
-                                        <th>Employees</th>
+                                        <th>#</th>
+                                        <th>Product</th>
+                                        <th class="text-end">Price</th>
+                                        <th class="text-end">Total Qty</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php
-                                    // Untuk breakdown pengeluaran per kategori, tampilkan nama karyawan jika Salary
-                                    $expenseBreakdownQuery = "SELECT 
-                                        ec.category_name,
-                                        SUM(t.amount) as total,
-                                        CASE 
-                                            WHEN ec.category_name = 'Salary' AND emp.name IS NOT NULL
-                                                THEN GROUP_CONCAT(emp.name SEPARATOR ', ')
-                                            ELSE NULL
-                                        END as employees
-                                    FROM expense_categories ec
-                                    LEFT JOIN transactions t ON ec.id = t.expense_category_id 
-                                        AND t.type = 'expense'
-                                        AND t.status = 'completed'
-                                        AND $where_clause
-                                    LEFT JOIN employees emp ON t.employee_id = emp.id
-                                    WHERE ec.is_active = TRUE
-                                    GROUP BY ec.id, ec.category_name
-                                    HAVING total > 0
-                                    ORDER BY total DESC";
-
-                                    $expenseBreakdown = $conn->query($expenseBreakdownQuery)->fetchAll(PDO::FETCH_ASSOC);
-                                    $totalExpense = array_sum(array_column($expenseBreakdown, 'total'));
-                                    foreach ($expenseBreakdown as $row):
-                                        $percentage = $totalExpense > 0 ? round(($row['total'] / $totalExpense) * 100, 1) : 0;
-                                    ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($row['category_name']) ?></td>
-                                        <td><?= formatCurrency($row['total']) ?></td>
-                                        <td><?= $percentage ?>%</td>
-                                        <td>
-                                            <?php if ($row['category_name'] === 'Salary' && $row['employees']): ?>
-                                                <span class="badge bg-info"><?= htmlspecialchars($row['employees']) ?></span>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
+                                <tbody id="productSalesSummaryBody">
+                                    <!-- Data akan diisi melalui JavaScript -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -417,7 +383,7 @@ ob_start();
 }
 
 /* Animasi untuk metrics */
-#netCashflow, #savingsRate, #expenseRatio, #debtRatio {
+#netCashflow, #expenseRatio, #debtRatio {
     transition: opacity 0.3s ease;
 }
 
@@ -597,7 +563,119 @@ ob_start();
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         loadReportData();
+        loadProductSalesChart(
+            document.getElementById('productSalesPeriod').value,
+            document.getElementById('productSalesShowLine').checked
+        );
     }, 100);
+
+    document.getElementById('productSalesPeriod').addEventListener('change', function() {
+        loadProductSalesChart(this.value, document.getElementById('productSalesShowLine').checked);
+    });
+    document.getElementById('productSalesShowLine').addEventListener('change', function() {
+        loadProductSalesChart(
+            document.getElementById('productSalesPeriod').value,
+            this.checked
+        );
+    });
+});
+
+function loadProductSalesChart(period = 'month', showLine = true) {
+    fetch('api/chart-data.php?type=product_sales&period=' + encodeURIComponent(period))
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            const ctx = document.getElementById('productSalesChart');
+            if (!ctx) return;
+            if (window.productSalesChart instanceof Chart) window.productSalesChart.destroy();
+
+            const labels = data.labels;
+            const datasets = data.datasets.map(ds => ({
+                label: ds.label,
+                data: ds.data.map((y, i) => ({ x: labels[i], y })),
+                showLine: !!showLine,
+                fill: false,
+                borderColor: ds.borderColor,
+                backgroundColor: ds.backgroundColor,
+                pointBackgroundColor: ds.backgroundColor,
+                pointBorderColor: ds.borderColor,
+                pointRadius: 6,
+                pointHoverRadius: 9,
+                tension: 0.3 // smooth line
+            }));
+
+            window.productSalesChart = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y ?? 0} pcs (${context.parsed.x})`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: labels,
+                            title: { display: true, text: 
+                                period === 'year' ? 'Year' :
+                                period === 'month' ? 'Month' :
+                                period === 'week' ? 'Week' : 'Day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Qty Terjual' },
+                            ticks: {
+                                stepSize: 1,
+                                precision: 0,
+                                callback: value => value
+                            }
+                        }
+                    }
+                }
+            });
+        });
+}
+
+function loadProductSalesSummary(period = 'month') {
+    fetch('api/report-data.php?type=product_sales_summary&period=' + encodeURIComponent(period))
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            const tbody = document.getElementById('productSalesSummaryBody');
+            tbody.innerHTML = '';
+
+            data.summary.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><span class="badge bg-secondary">${index + 1}</span></td>
+                    <td>${item.product_name}</td>
+                    <td class="text-end">${item.price !== null ? formatCurrency(item.price) : '-'}</td>
+                    <td class="text-end">${item.total_qty !== null ? item.total_qty : '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('productSalesSummaryCard').style.display = data.summary.length > 0 ? '' : 'none';
+        });
+}
+
+// Panggil fungsi untuk memuat ringkasan penjualan produk saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    loadProductSalesSummary(document.getElementById('productSalesPeriod').value);
+});
+
+// Update ringkasan penjualan produk saat periode diubah
+document.getElementById('productSalesPeriod').addEventListener('change', function() {
+    loadProductSalesSummary(this.value);
 });
 </script>
 
