@@ -40,6 +40,16 @@ CREATE TABLE expense_categories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Products table
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    stock INT DEFAULT 0,
+    price INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Transactions table
 CREATE TABLE transactions (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -49,12 +59,14 @@ CREATE TABLE transactions (
     description TEXT,
     income_source_id INT NULL,
     expense_category_id INT NULL,
+    product_id INT NULL,
     payment_method ENUM('cash', 'bank_transfer', 'e-wallet', 'qris') DEFAULT 'cash',
     employee_id INT NULL,
     status ENUM('completed', 'pending', 'cancelled', 'deleted') DEFAULT 'completed',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (income_source_id) REFERENCES income_sources(id) ON DELETE SET NULL,
     FOREIGN KEY (expense_category_id) REFERENCES expense_categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
     FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE SET NULL
 );
 
