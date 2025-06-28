@@ -615,7 +615,7 @@ function loadProductSalesChart(period = 'month', showLine = true) {
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return `${context.dataset.label}: ${context.parsed.y ?? 0} pcs (${context.parsed.x})`;
+                                    return `${context.dataset.label}: ${context.parsed.y ?? 0} pcs (${context.dataIndex + 1})`;
                                 }
                             }
                         }
