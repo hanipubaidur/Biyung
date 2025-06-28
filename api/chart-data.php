@@ -27,50 +27,51 @@ try {
     if ($type === 'flow') {
         switch($period) {
             case 'day':
-                // Show all days in current month
+                // Show all days in current month, label = 1,2,3,...
                 $query = "SELECT 
-                    DATE_FORMAT(date, '%d %b') as label,
+                    DAY(date) as label,
                     SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
                     SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
                     FROM transactions 
                     WHERE DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE, '%Y-%m')
                     AND status != 'deleted'
-                    GROUP BY DATE(date)
-                    ORDER BY date ASC";
+                    GROUP BY DAY(date)
+                    ORDER BY DAY(date) ASC";
                 break;
 
             case 'week':
-                // Show all weeks in current month
+                // Show all weeks in current month, label = Week 1, Week 2, ...
                 $query = "SELECT 
-                    CONCAT('Week ', 
-                        FLOOR((DAYOFMONTH(date)-1)/7) + 1) as label,
+                    FLOOR((DAYOFMONTH(date)-1)/7) + 1 as week_num,
+                    CONCAT('Week ', FLOOR((DAYOFMONTH(date)-1)/7) + 1) as label,
                     SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
                     SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
                     FROM transactions 
                     WHERE DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE, '%Y-%m')
                     AND status != 'deleted'
-                    GROUP BY FLOOR((DAYOFMONTH(date)-1)/7)
-                    ORDER BY MIN(date) ASC";
+                    GROUP BY week_num
+                    ORDER BY week_num ASC";
                 break;
 
             case 'month':
-                // Show all months in current year
+                // Show all months in current year, label = Jan, Feb, ... (index 1-12)
                 $query = "SELECT 
-                    DATE_FORMAT(date, '%M') as label,
+                    MONTH(date) as month_num,
+                    DATE_FORMAT(date, '%b') as label,
                     SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
                     SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
                     FROM transactions 
                     WHERE YEAR(date) = YEAR(CURRENT_DATE)
                     AND status != 'deleted'
-                    GROUP BY MONTH(date)
-                    ORDER BY MONTH(date) ASC";
+                    GROUP BY month_num, label
+                    ORDER BY month_num ASC";
                 break;
 
             case 'year':
-                // Show 6 years (current year - 2 until current year + 3)
+                // Show 6 years (rolling window: current year - 1 to current year + 4)
                 $currentYear = date('Y');
-                $startYear = $currentYear - 2;
-                $endYear = $currentYear + 3;
+                $startYear = $currentYear - 1;
+                $endYear = $currentYear + 4;
                 $query = "SELECT 
                     YEAR(date) as label,
                     SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
@@ -89,12 +90,102 @@ try {
         // Fill missing periods in chronological order
         $filledData = fillMissingPeriods($data, $period);
 
+        // Untuk daily, weekly, monthly, yearly: label harus urut dan mulai dari 1
+        if ($period === 'day') {
+            $labels = [];
+            $income = [];
+            $expenses = [];
+            $daysInMonth = intval(date('t'));
+            for ($i = 1; $i <= $daysInMonth; $i++) {
+                $labels[] = (string)$i;
+                $found = false;
+                foreach ($filledData as $row) {
+                    if ((int)$row['label'] === $i) {
+                        $income[] = floatval($row['income']);
+                        $expenses[] = floatval($row['expense']);
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $income[] = 0;
+                    $expenses[] = 0;
+                }
+            }
+        } elseif ($period === 'week') {
+            $numWeeks = ceil(date('t') / 7);
+            $labels = [];
+            $income = [];
+            $expenses = [];
+            for ($w = 1; $w <= $numWeeks; $w++) {
+            $labels[] = "Week $w";
+            $found = false;
+            foreach ($filledData as $row) {
+                if ((int)$row['week_num'] === $w || $row['label'] == "Week $w") {
+                    $income[] = floatval($row['income']);
+                    $expenses[] = floatval($row['expense']);
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                $income[] = 0;
+                $expenses[] = 0;
+            }
+        }
+        } elseif ($period === 'month') {
+            $months = [1=>'Jan',2=>'Feb',3=>'Mar',4=>'Apr',5=>'May',6=>'Jun',7=>'Jul',8=>'Aug',9=>'Sep',10=>'Oct',11=>'Nov',12=>'Dec'];
+            $labels = [];
+            $income = [];
+            $expenses = [];
+            foreach ($months as $num => $mon) {
+                $labels[] = $mon;
+                $found = false;
+                foreach ($filledData as $row) {
+                    if ((int)($row['month_num'] ?? 0) === $num || $row['label'] === $mon) {
+                        $income[] = floatval($row['income']);
+                        $expenses[] = floatval($row['expense']);
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $income[] = 0;
+                    $expenses[] = 0;
+                }
+            }
+        } elseif ($period === 'year') {
+            $currentYear = date('Y');
+            $startYear = $currentYear - 1;
+            $endYear = $currentYear + 4;
+            $labels = [];
+            $income = [];
+            $expenses = [];
+            for ($y = $startYear; $y <= $endYear; $y++) {
+                $labels[] = (string)$y;
+                $found = false;
+                foreach ($filledData as $row) {
+                    if ((int)$row['label'] === $y) {
+                        $income[] = floatval($row['income']);
+                        $expenses[] = floatval($row['expense']);
+                        $found = true;
+                        break;
+                    }
+                }
+                if (!$found) {
+                    $income[] = 0;
+                    $expenses[] = 0;
+                }
+            }
+        }
+
         echo json_encode([
             'success' => true,
-            'dates' => array_column($filledData, 'label'),
-            'income' => array_map('floatval', array_column($filledData, 'income')),
-            'expenses' => array_map('floatval', array_column($filledData, 'expense'))
+            'dates' => $labels,
+            'income' => $income,
+            'expenses' => $expenses
         ]);
+        exit;
     } 
     elseif ($type === 'category') {
         // Perbaiki where clause untuk 'week'
@@ -264,7 +355,6 @@ try {
             5 => 'May', 6 => 'Jun', 7 => 'Jul', 8 => 'Aug',
             9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec'
         ];
-        
         $completeData = [];
         foreach ($months as $num => $month) {
             $found = false;
@@ -280,7 +370,6 @@ try {
                     break;
                 }
             }
-            
             if (!$found) {
                 $completeData[] = [
                     'month' => $month,
@@ -305,7 +394,10 @@ try {
     elseif ($type === 'product_sales') {
         $period = $_GET['period'] ?? 'month';
         if ($period === 'year') {
-            $startYear = date('Y') - 4;
+            // Rolling window: 6 tahun, dari tahun berjalan-1 sampai tahun berjalan+4
+            $currentYear = date('Y');
+            $startYear = $currentYear - 1;
+            $endYear = $currentYear + 4;
             $query = "SELECT 
                 p.id as product_id,
                 p.name as product_name,
@@ -317,11 +409,12 @@ try {
             WHERE t.type = 'income'
                 AND t.status = 'completed'
                 AND YEAR(t.date) >= $startYear
+                AND YEAR(t.date) <= $endYear
                 AND p.is_active = 1
             GROUP BY p.id, p.name, p.price, period_label
             ORDER BY p.name, p.price, period_label";
             $labels = [];
-            for ($y = $startYear; $y <= date('Y'); $y++) $labels[] = (string)$y;
+            for ($y = $startYear; $y <= $endYear; $y++) $labels[] = (string)$y;
         } elseif ($period === 'month') {
             $year = date('Y');
             $query = "SELECT 
@@ -346,8 +439,8 @@ try {
                 p.id as product_id,
                 p.name as product_name,
                 p.price as product_price,
-                YEARWEEK(t.date, 1) as period_num,
-                CONCAT('W', WEEK(t.date, 1) - WEEK(DATE_FORMAT(t.date, '%Y-01-01'), 1) + 1, ' ', DATE_FORMAT(t.date, '%b')) as period_label,
+                FLOOR((DAYOFMONTH(t.date)-1)/7) + 1 as period_num,
+                CONCAT('Week ', FLOOR((DAYOFMONTH(t.date)-1)/7) + 1) as period_label,
                 COUNT(t.id) as qty
             FROM transactions t
             INNER JOIN products p ON t.product_id = p.id
@@ -357,16 +450,9 @@ try {
                 AND p.is_active = 1
             GROUP BY p.id, p.name, p.price, period_num, period_label
             ORDER BY p.name, p.price, period_num";
+            $numWeeks = ceil(date('t') / 7);
             $labels = [];
-            $start = new DateTime("$year-01-01");
-            $end = new DateTime("$year-12-31");
-            while ($start <= $end) {
-                $weekNum = (int)$start->format('W');
-                $month = $start->format('M');
-                $label = "W" . ($weekNum - (int)(new DateTime("$year-01-01"))->format('W') + 1) . " $month";
-                if (!in_array($label, $labels)) $labels[] = $label;
-                $start->modify('+7 days');
-            }
+            for ($w = 1; $w <= $numWeeks; $w++) $labels[] = "Week $w";
         } else {
             $year = date('Y');
             $month = date('m');
@@ -375,7 +461,7 @@ try {
                 p.name as product_name,
                 p.price as product_price,
                 DAY(t.date) as period_num,
-                DATE_FORMAT(t.date, '%d %b') as period_label,
+                DAY(t.date) as period_label,
                 COUNT(t.id) as qty
             FROM transactions t
             INNER JOIN products p ON t.product_id = p.id
@@ -388,9 +474,7 @@ try {
             ORDER BY p.name, p.price, period_num";
             $days = (int)date('t');
             $labels = [];
-            for ($d = 1; $d <= $days; $d++) {
-                $labels[] = str_pad($d, 2, '0', STR_PAD_LEFT) . ' ' . date('M', strtotime("$year-$month-$d"));
-            }
+            for ($d = 1; $d <= $days; $d++) $labels[] = (string)$d;
         }
 
         $stmt = $conn->query($query);
@@ -471,72 +555,68 @@ function fillMissingPeriods($data, $period) {
     
     switch($period) {
         case 'day':
-            // Fill all days in current month
+            // Fill all days in current month, label = 1,2,3,...
             $daysInMonth = intval($today->format('t'));
             for($i = 1; $i <= $daysInMonth; $i++) {
-                $date = (new DateTime())->setDate($today->format('Y'), $today->format('m'), $i);
-                $dateLabel = $date->format('d M');
                 $found = false;
                 foreach($data as $row) {
-                    if($row['label'] == $dateLabel) {
+                    if((int)$row['label'] === $i) {
                         $filled[] = $row;
                         $found = true;
                         break;
                     }
                 }
                 if(!$found) {
-                    $filled[] = ['label' => $dateLabel, 'income' => 0, 'expense' => 0];
+                    $filled[] = ['label' => $i, 'income' => 0, 'expense' => 0];
                 }
             }
             break;
 
         case 'week':
-            // Fill all weeks in current month (usually 4-5 weeks)
+            // Fill all weeks in current month (usually 4-5 weeks), label = Week 1, Week 2, ...
             $numWeeks = ceil($today->format('t') / 7);
             for($w = 1; $w <= $numWeeks; $w++) {
-                $weekLabel = "Week " . $w;
                 $found = false;
                 foreach($data as $row) {
-                    if($row['label'] == $weekLabel) {
+                    if((isset($row['week_num']) && (int)$row['week_num'] === $w) || $row['label'] == "Week $w") {
                         $filled[] = $row;
                         $found = true;
                         break;
                     }
                 }
                 if(!$found) {
-                    $filled[] = ['label' => $weekLabel, 'income' => 0, 'expense' => 0];
+                    $filled[] = ['week_num' => $w, 'label' => "Week $w", 'income' => 0, 'expense' => 0];
                 }
             }
             break;
 
         case 'month':
-            // Fill all months in year
-            $months = ['January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 'December'];
-            foreach($months as $month) {
+            // Fill all months in year, label = Jan, Feb, ... (index 1-12)
+            $months = [1=>'Jan',2=>'Feb',3=>'Mar',4=>'Apr',5=>'May',6=>'Jun',7=>'Jul',8=>'Aug',9=>'Sep',10=>'Oct',11=>'Nov',12=>'Dec'];
+            foreach($months as $num => $mon) {
                 $found = false;
                 foreach($data as $row) {
-                    if($row['label'] == $month) {
+                    if ((isset($row['month_num']) && (int)$row['month_num'] === $num) || $row['label'] === $mon) {
                         $filled[] = $row;
                         $found = true;
                         break;
                     }
                 }
                 if(!$found) {
-                    $filled[] = ['label' => $month, 'income' => 0, 'expense' => 0];
+                    $filled[] = ['month_num' => $num, 'label' => $mon, 'income' => 0, 'expense' => 0];
                 }
             }
             break;
 
         case 'year':
-            // Fill 6 years (current year - 2 until current year + 3)
+            // Fill 6 years (current year - 1 until current year + 4)
             $currentYear = intval($today->format('Y'));
-            $startYear = $currentYear - 2;
-            $endYear = $currentYear + 3;
+            $startYear = $currentYear - 1;
+            $endYear = $currentYear + 4;
             for($y = $startYear; $y <= $endYear; $y++) {
                 $found = false;
                 foreach($data as $row) {
-                    if($row['label'] == $y) {
+                    if((int)$row['label'] === $y) {
                         $filled[] = $row;
                         $found = true;
                         break;
