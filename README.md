@@ -1,20 +1,10 @@
 # 🥤 Biyung - Manajemen Keuangan Jualan Es Ubi Ungu
 
 ## 📝 Pembaruan Terbaru
-- 🟢 Perbaikan logika badge status Surplus/Deficit/Break Even/No Data pada Monthly Comparison Table
-- 🟡 Export Excel hanya menampilkan data yang ada di database, judul dan emoji tetap cantik
-- 🔵 Perbaikan tampilan dan logika timestamp dashboard (tampil "No transactions yet" jika kosong)
-- 🟠 Perbaikan query dan tampilan dashboard stats (income/expense per periode)
-- 🟤 Konsistensi format currency dan animasi progress bar
-- ⚡ Optimasi query dan pengelolaan kategori (soft/hard delete)
-- 🟤 Perbaikan validasi form transaksi
-- 🟢 Penambahan dan perbaikan style badge, alignment, dan tabel
-- 🔶 Penambahan kolom nama produk, harga produk, dan total terjual di laporan ekspor (Excel) dan summary chart.
-- 🔷 Transaction Master di export Excel kini menampilkan nama produk & harga produk.
-- 🔶 Perbaikan tampilan dan logika chart penjualan produk (qty integer, tidak koma, info produk lengkap).
-- 🔷 Penambahan tabel ringkasan produk terjual di halaman laporan.
-- 🔶 Penyesuaian query dan tampilan pada form transaksi, laporan, dan ekspor agar konsisten dengan analisis produk.
-- 🔷 Perbaikan minor pada UI dan validasi form transaksi.
+- 🟢 Perbaikan error tampilan chart weekly (mingguan) pada dashboard (label dan data kini konsisten, error console hilang)
+- 🟢 Penanganan error parsing JSON pada frontend agar tidak menyebabkan crash jika backend error
+- 🟠 Animasi chart cashflow kini lebih smooth dan halus (khususnya pada mode harian)
+- 🟡 Penambahan instruksi cara cek versi Chart.js di browser pada README
 
 <div align="center">
   
