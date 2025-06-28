@@ -77,28 +77,70 @@ async function loadAllData(period) {
 async function loadChartData(period) {
     try {
         console.log('Loading data for period:', period);
-        
+
         // Show loading states
         const chartLoading = document.getElementById('chartLoading');
         const donutLoading = document.getElementById('donutLoading');
         const cashFlowChart = document.getElementById('cashFlowChart');
         const expenseDonutChart = document.getElementById('expenseDonutChart');
-        
+
         if (chartLoading) chartLoading.style.display = 'block';
         if (donutLoading) donutLoading.style.display = 'block';
         if (cashFlowChart) cashFlowChart.style.display = 'none';
         if (expenseDonutChart) expenseDonutChart.style.display = 'none';
 
-        const [flowResponse, categoryResponse] = await Promise.all([
-            fetch(`api/chart-data.php?type=flow&period=${period}`),
-            fetch(`api/chart-data.php?type=category&period=${period}`)
-        ]);
+        // --- Tambahkan pengecekan validitas JSON ---
+        let flowData, categoryData;
+        try {
+            const [flowResponse, categoryResponse] = await Promise.all([
+                fetch(`api/chart-data.php?type=flow&period=${period}`),
+                fetch(`api/chart-data.php?type=category&period=${period}`)
+            ]);
 
-        const flowData = await flowResponse.json();
-        const categoryData = await categoryResponse.json();
+            // Cek status response
+            if (!flowResponse.ok) throw new Error('Flow API error: ' + flowResponse.status);
+            if (!categoryResponse.ok) throw new Error('Category API error: ' + categoryResponse.status);
+
+            // Coba parse JSON, jika gagal tangkap error
+            // --- FIX: Only read response body ONCE ---
+            let flowText = await flowResponse.text();
+            let categoryText = await categoryResponse.text();
+            try {
+                flowData = JSON.parse(flowText);
+            } catch (e) {
+                throw new Error('Flow API returned invalid JSON: ' + flowText.substring(0, 200));
+            }
+            try {
+                categoryData = JSON.parse(categoryText);
+            } catch (e) {
+                throw new Error('Category API returned invalid JSON: ' + categoryText.substring(0, 200));
+            }
+            // --- END FIX ---
+        } catch (fetchErr) {
+            // Tampilkan error di UI dan console
+            if (chartLoading) chartLoading.innerHTML = 'Error loading data: ' + fetchErr.message;
+            if (donutLoading) donutLoading.innerHTML = 'Error loading data: ' + fetchErr.message;
+            console.error(fetchErr);
+            return;
+        }
+        // --- End pengecekan validitas JSON ---
 
         console.log('Flow data:', flowData);
         console.log('Category data:', categoryData);
+
+        // --- Fix for weekly data structure ---
+        if (period === 'week' && Array.isArray(flowData)) {
+            // Transform [{week_num, income, expense}] to {dates, income, expenses}
+            const weekLabels = flowData.map(item => `Week ${item.week_num}`);
+            const incomeArr = flowData.map(item => Number(item.income) || 0);
+            const expenseArr = flowData.map(item => Number(item.expense) || 0);
+            flowData = {
+                dates: weekLabels,
+                income: incomeArr,
+                expenses: expenseArr
+            };
+        }
+        // --- End fix ---
 
         // Hide loading, show charts
         if (chartLoading) chartLoading.style.display = 'none';
@@ -129,7 +171,7 @@ function updateCashFlowChart(data) {
         window.chartInstances.cashFlow.destroy();
     }
 
-    // Create new chart instance with only income and expense lines
+    // --- SMOOTH ANIMATION: Use cubic easing and set animation duration ---
     window.chartInstances.cashFlow = new Chart(ctx, {
         type: 'line',
         data: {
@@ -160,6 +202,10 @@ function updateCashFlowChart(data) {
             interaction: {
                 intersect: false,
                 mode: 'index'
+            },
+            animation: {
+                duration: 1200, // Lebih lama supaya smooth
+                easing: 'easeInOutCubic' // Easing yang lebih halus
             },
             scales: {
                 y: {
