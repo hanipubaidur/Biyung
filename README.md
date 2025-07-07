@@ -1,10 +1,11 @@
 # 🥤 Biyung - Manajemen Keuangan Jualan Es Ubi Ungu
 
 ## 📝 Pembaruan Terbaru
-- 🟢 Perbaikan error tampilan chart weekly (mingguan) pada dashboard (label dan data kini konsisten, error console hilang)
-- 🟢 Penanganan error parsing JSON pada frontend agar tidak menyebabkan crash jika backend error
-- 🟠 Animasi chart cashflow kini lebih smooth dan halus (khususnya pada mode harian)
-- 🟡 Penambahan instruksi cara cek versi Chart.js di browser pada README
+- ✅ Penambahan fitur quantity pada transaksi produk, amount otomatis = harga x quantity.
+- ✅ Financial Overview kini menampilkan Total Product Sold (total produk terjual).
+- ✅ "Last Update" tetap tampil walaupun belum ada transaksi (tampil "No transactions yet").
+- ✅ Semua fitur debt/loan & savings dihapus, sesuai kebutuhan Biyung.
+- ✅ Tampilan dan logika laporan, dashboard, dan chart disederhanakan seperti MoneyFlow.
 
 <div align="center">
   
@@ -37,7 +38,7 @@ Aplikasi ini dibuat khusus untuk pencatatan keuangan usaha Biyung Ubi Ungu.
   - TikTok: [@biyungubiungu.jogja](https://www.tiktok.com/@biyungubiungu.jogja)  
   - Instagram: [@biyungubiungu.jogja](https://www.instagram.com/biyungubiungu.jogja)
 
-Fitur utama: pencatatan pemasukan (cash, transfer/e-wallet, QRIS), pengeluaran modal, gaji karyawan (dengan dropdown karyawan), dan pengeluaran lain-lain.  
+Fitur utama: pencatatan pemasukan (cash, transfer/e-wallet, QRIS), pengeluaran modal, gaji karyawan (dengan dropdown karyawan), pengeluaran lain-lain, dan penjualan produk dengan quantity.  
 Manajemen karyawan terintegrasi.
 
 ---
@@ -45,19 +46,23 @@ Manajemen karyawan terintegrasi.
 ## 🚀 Fitur Utama
 
 - **Dashboard Ringkasan:**  
-  Lihat saldo, pemasukan, pengeluaran, dan rasio pengeluaran secara real-time dengan animasi dan breakdown per periode (harian, mingguan, bulanan, tahunan).
+  Lihat saldo, pemasukan, pengeluaran, rasio pengeluaran, dan total produk terjual secara real-time dengan animasi dan breakdown per periode (harian, mingguan, bulanan, tahunan).
 
 - **Pencatatan Transaksi:**  
-  Catat pemasukan (cash, transfer, QRIS) dan pengeluaran (modal, gaji, dll) dengan kategori yang mudah dipilih.
+  Catat pemasukan (cash, transfer, QRIS, produk) dan pengeluaran (modal, gaji, dll) dengan kategori yang mudah dipilih.  
+  Untuk transaksi produk, input quantity dan amount otomatis dihitung (harga x quantity).
 
 - **Manajemen Karyawan:**  
   Tambah/edit/nonaktifkan karyawan, serta pencatatan gaji otomatis terhubung ke data karyawan.
+
+- **Manajemen Produk & Stok:**  
+  Tambah produk, atur stok, dan harga. Stok otomatis berkurang saat ada penjualan.
 
 - **Kategori Dinamis:**  
   Tambah/hapus sumber pemasukan dan kategori pengeluaran sesuai kebutuhan usaha.
 
 - **Laporan & Analisis:**  
-  Laporan keuangan lengkap, grafik cashflow, breakdown pengeluaran, analisis performa bulanan, dan ekspor data ke Excel.
+  Laporan keuangan lengkap, grafik cashflow, breakdown pengeluaran, analisis performa bulanan, ekspor data ke Excel.
 
 - **Responsive & User Friendly:**  
   Tampilan modern, mudah digunakan di HP maupun laptop.
@@ -70,6 +75,9 @@ Manajemen karyawan terintegrasi.
 ### ✨ Fitur Lainnya
 
 - Export data ke Excel
+- Riwayat transaksi terbaru
+- Tabel ringkasan produk terjual
+
 ## 🛠️ Teknologi yang Digunakan
 - PHP 7.4+
 - MySQL 5.7+ 
