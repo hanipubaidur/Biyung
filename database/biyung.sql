@@ -55,6 +55,7 @@ CREATE TABLE transactions (
     id INT PRIMARY KEY AUTO_INCREMENT,
     type ENUM('income', 'expense') NOT NULL,
     amount DECIMAL(15,2) NOT NULL,
+    quantity INT DEFAULT 1, -- Tambah kolom quantity
     date DATE NOT NULL,
     description TEXT,
     income_source_id INT NULL,
