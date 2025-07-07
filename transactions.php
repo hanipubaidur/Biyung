@@ -86,6 +86,11 @@ ob_start();
                         </select>
                         <div id="productStockInfo" class="form-text text-muted mt-1"></div>
                     </div>
+                    <div class="mb-3" id="quantitySection" style="display:none;">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control" name="quantity" id="quantityInput" min="1" value="1">
+                        <div class="form-text text-muted">Jumlah barang yang dibeli (hanya untuk transaksi produk).</div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Amount</label>
                         <div class="input-group">
@@ -93,7 +98,7 @@ ob_start();
                             <input type="number" class="form-control" name="amount" id="amountInput" required>
                         </div>
                         <div class="form-text text-muted" id="amountInfo">
-                            Untuk transaksi produk, Amount = harga produk per item.
+                            Untuk transaksi produk, Amount = harga produk per item x quantity.
                         </div>
                     </div>
                 </div>
@@ -156,10 +161,13 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateProductDropdown() {
         const typeSelect = document.getElementById('transactionType');
         const productSection = document.getElementById('productSelectSection');
+        const quantitySection = document.getElementById('quantitySection');
         if (typeSelect.value === 'income') {
             productSection.style.display = '';
+            quantitySection.style.display = '';
         } else {
             productSection.style.display = 'none';
+            quantitySection.style.display = 'none';
             productSection.querySelector('select').value = '';
             document.getElementById('productStockInfo').textContent = '';
         }
@@ -171,6 +179,48 @@ document.addEventListener('DOMContentLoaded', function() {
     const productSelect = document.getElementById('productSelectDropdown');
     const stockInfo = document.getElementById('productStockInfo');
     const amountInput = document.getElementById('amountInput');
+    const quantityInput = document.getElementById('quantityInput');
+
+    function updateProductStockInfo() {
+        const selected = productSelect.options[productSelect.selectedIndex];
+        if (!selected || !selected.value) {
+            stockInfo.textContent = '';
+            if (amountInput) amountInput.value = '';
+            return;
+        }
+        // Ambil stok dari label option
+        const stokMatch = selected.text.match(/\(Stok: (\d+)[^)]*\)/);
+        if (stokMatch) {
+            const stok = stokMatch[1];
+            stockInfo.textContent = 'Sisa stok: ' + stok;
+            if (quantityInput) quantityInput.max = stok;
+        } else if (selected.text.includes('Stok habis')) {
+            stockInfo.textContent = 'Stok habis';
+            if (quantityInput) quantityInput.max = 1;
+        } else {
+            stockInfo.textContent = '';
+            if (quantityInput) quantityInput.removeAttribute('max');
+        }
+        // Auto-isi harga ke amount jika ada data-price dan quantity
+        if (selected.dataset.price && amountInput && quantityInput) {
+            const price = parseInt(selected.dataset.price, 10) || 0;
+            const qty = parseInt(quantityInput.value, 10) || 1;
+            amountInput.value = price * qty;
+        }
+    }
+
+    // Update amount jika quantity berubah (khusus income + produk)
+    if (quantityInput) {
+        quantityInput.addEventListener('input', function() {
+            const selected = productSelect.options[productSelect.selectedIndex];
+            if (selected && selected.dataset.price) {
+                const price = parseInt(selected.dataset.price, 10) || 0;
+                const qty = parseInt(quantityInput.value, 10) || 1;
+                amountInput.value = price * qty;
+            }
+        });
+    }
+
     if (productSelect) {
         productSelect.addEventListener('change', function() {
             updateProductStockInfo();
