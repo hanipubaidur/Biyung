@@ -32,10 +32,6 @@ try {
     $metricsQuery = "SELECT 
         COALESCE(SUM(CASE WHEN t.type = 'income' AND t.status = 'completed' THEN t.amount ELSE 0 END), 0) as total_income,
         COALESCE(SUM(CASE WHEN t.type = 'expense' AND t.status = 'completed' THEN t.amount ELSE 0 END), 0) as total_expense,
-        COALESCE(SUM(CASE 
-            WHEN t.type = 'expense' AND t.status = 'completed'
-            AND t.expense_category_id IN (SELECT id FROM expense_categories WHERE category_name = 'Debt/Loan')
-            THEN amount ELSE 0 END), 0) as debt_amount,
         (SELECT COALESCE(SUM(CASE 
             WHEN type = 'income' AND status = 'completed' THEN amount 
             WHEN type = 'expense' AND status = 'completed' THEN -amount 
@@ -52,8 +48,6 @@ try {
     $net_cashflow = $metrics['all_time_balance'];
     $expense_ratio = $metrics['total_income'] > 0 ? 
         ($metrics['total_expense'] / $metrics['total_income'] * 100) : 0;
-    $debt_ratio = $metrics['total_income'] > 0 ? 
-        ($metrics['debt_amount'] / $metrics['total_income'] * 100) : 0;
 
     // Update top income and expenses query with same period clause
     $topIncomeQuery = "SELECT 
@@ -111,8 +105,7 @@ try {
         'success' => true,
         'metrics' => [
             'net_cashflow' => floatval($net_cashflow),
-            'expense_ratio' => floatval($expense_ratio),
-            'debt_ratio' => floatval($debt_ratio)
+            'expense_ratio' => floatval($expense_ratio)
         ],
         'monthly_comparison' => [
             'months' => array_column($monthlyData, 'month'),
