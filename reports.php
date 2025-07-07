@@ -35,10 +35,6 @@ switch($period) {
 $metricsQuery = "SELECT 
     COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END), 0) as total_income,
     COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END), 0) as total_expense,
-    COALESCE(SUM(CASE 
-        WHEN t.type = 'expense' AND t.expense_category_id IN (
-            SELECT id FROM expense_categories WHERE category_name = 'Debt/Loan'
-        ) THEN t.amount ELSE 0 END), 0) as debt_amount,
     (SELECT MAX(created_at) FROM transactions 
      WHERE status = 'completed') as last_transaction
 FROM transactions t 
@@ -51,8 +47,9 @@ $metrics = $stmt->fetch(PDO::FETCH_ASSOC);
 $net_cashflow = $metrics['total_income'] - $metrics['total_expense'];
 $expense_ratio = $metrics['total_income'] > 0 ? 
     ($metrics['total_expense'] / $metrics['total_income'] * 100) : 0;
-$debt_ratio = $metrics['total_income'] > 0 ? 
-    ($metrics['debt_amount'] / $metrics['total_income'] * 100) : 0;
+
+// Query total produk terjual (income dengan product_id dan status completed)
+$totalProductSold = $conn->query("SELECT COALESCE(SUM(quantity),0) FROM transactions WHERE type='income' AND product_id IS NOT NULL AND status='completed'")->fetchColumn();
 
 ob_start();
 ?>
@@ -79,7 +76,9 @@ ob_start();
                             <div class="card-body">
                                 <h6>Net Cash Flow</h6>
                                 <h3 id="netCashflow" class="mb-0"><?= formatCurrency($net_cashflow) ?></h3>
-                                <small class="text-white-50" id="lastUpdate" data-time="<?= $metrics['last_transaction'] ?>"></small>
+                                <small class="text-white-50" id="lastUpdate" data-time="<?= $metrics['last_transaction'] ?>">
+                                    <?= $metrics['last_transaction'] ? '' : 'No transactions yet' ?>
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -115,15 +114,9 @@ ob_start();
                     <div class="col-md-3">
                         <div class="card bg-warning text-white">
                             <div class="card-body">
-                                <h6>Debt Ratio</h6>
-                                <h3 id="debtRatio" class="mb-0"><?= number_format($debt_ratio, 1) ?>%</h3>
-                                <small id="debtStatus" class="text-white">
-                                    <?php if ($debt_ratio <= 30): ?>
-                                        <i class='bx bx-check'></i> Good
-                                    <?php else: ?>
-                                        <i class='bx bx-x'></i> High
-                                    <?php endif; ?>
-                                </small>
+                                <h6>Total Product Sold</h6>
+                                <h3 id="totalProductSold" class="mb-0"><?= $totalProductSold ?></h3>
+                                <small class="text-white-50">All time</small>
                             </div>
                         </div>
                     </div>
@@ -379,11 +372,6 @@ ob_start();
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    transition: opacity 0.3s ease;
-}
-
-/* Animasi untuk metrics */
-#netCashflow, #expenseRatio, #debtRatio {
     transition: opacity 0.3s ease;
 }
 
@@ -677,6 +665,19 @@ document.addEventListener('DOMContentLoaded', function() {
 document.getElementById('productSalesPeriod').addEventListener('change', function() {
     loadProductSalesSummary(this.value);
 });
+
+// Update last update text even if empty
+function updateTimestamp() {
+    const el = document.getElementById('lastUpdate');
+    if (el) {
+        const time = el.dataset.time;
+        if (!time || time === 'null' || time === '') {
+            el.textContent = 'No transactions yet';
+        } else {
+            el.textContent = timeAgo(time);
+        }
+    }
+}
 </script>
 
 <?php include 'includes/layout.php'; ?>
