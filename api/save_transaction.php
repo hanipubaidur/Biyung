@@ -26,6 +26,12 @@ try {
         if ($product_id === '') $product_id = null;
     }
 
+    // Ambil quantity jika income
+    $quantity = 1;
+    if ($type === 'income') {
+        $quantity = isset($_POST['quantity']) && intval($_POST['quantity']) > 0 ? intval($_POST['quantity']) : 1;
+    }
+
     // Cek apakah expense category Salary
     $employee_id = null;
     if ($type === 'expense') {
@@ -47,15 +53,15 @@ try {
         // Insert/update transaction
         if (isset($_POST['transaction_id'])) {
             $query = "UPDATE transactions 
-                     SET type = ?, amount = ?, date = ?, description = ?,
+                     SET type = ?, amount = ?, quantity = ?, date = ?, description = ?,
                          $sourceColumn = ?, employee_id = ?, product_id = ?
                      WHERE id = ?";
-            $params = [$type, $amount, $date, $description, $categoryId, $employee_id, $product_id, $_POST['transaction_id']];
+            $params = [$type, $amount, $quantity, $date, $description, $categoryId, $employee_id, $product_id, $_POST['transaction_id']];
         } else {
             $query = "INSERT INTO transactions 
-                     (type, amount, date, description, $sourceColumn, employee_id, product_id, status) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?, 'completed')";
-            $params = [$type, $amount, $date, $description, $categoryId, $employee_id, $product_id];
+                     (type, amount, quantity, date, description, $sourceColumn, employee_id, product_id, status) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed')";
+            $params = [$type, $amount, $quantity, $date, $description, $categoryId, $employee_id, $product_id];
         }
 
         $stmt = $conn->prepare($query);
@@ -65,8 +71,8 @@ try {
 
         // Kurangi stok produk jika income dan ada product_id
         if ($type === 'income' && $product_id) {
-            $updateStock = $conn->prepare("UPDATE products SET stock = stock - 1 WHERE id = ? AND stock > 0");
-            $updateStock->execute([$product_id]);
+            $updateStock = $conn->prepare("UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?");
+            $updateStock->execute([$quantity, $product_id, $quantity]);
         }
 
         $transactionId = isset($_POST['transaction_id']) ? 
