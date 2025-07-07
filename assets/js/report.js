@@ -1,25 +1,3 @@
-const REPORT_COLORS = {
-    income: {
-        background: 'rgba(40, 167, 69, 0.5)',
-        border: 'rgb(40, 167, 69)'
-    },
-    expense: {
-        background: 'rgba(220, 53, 69, 0.5)',
-        border: 'rgb(220, 53, 69)'
-    },
-    categories: {
-        'Housing': '#4e73df',
-        'Food': '#1cc88a', 
-        'Transportation': '#36b9cc',
-        'Healthcare': '#f6c23e',
-        'Entertainment': '#e74a3b',
-        'Shopping': '#858796',
-        'Education': '#5a5c69',
-        'Debt/Loan': '#2c9faf',
-        'Other': '#4A5568'
-    }
-};
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Loading report charts...'); // Debug log
     loadReportData();
@@ -106,7 +84,6 @@ function updateMetrics(metrics) {
         netCashflow: document.getElementById('netCashflow'),
         lastNetUpdate: document.getElementById('lastNetUpdate'),
         expenseRatio: document.getElementById('expenseRatio'),
-        debtRatio: document.getElementById('debtRatio'),
         activeEmployees: document.getElementById('activeEmployees')
     };
 
@@ -120,7 +97,6 @@ function updateMetrics(metrics) {
         }
     }
     if (elements.expenseRatio) elements.expenseRatio.textContent = `${metrics.expense_ratio.toFixed(1)}%`;
-    if (elements.debtRatio) elements.debtRatio.textContent = `${metrics.debt_ratio.toFixed(1)}%`;
     if (elements.activeEmployees) elements.activeEmployees.textContent = metrics.active_employees ?? 0;
 
     // Update status indicators
@@ -132,13 +108,6 @@ function updateStatusIndicators(metrics) {
     if (expenseStatus) {
         expenseStatus.innerHTML = metrics.expense_ratio <= 70 ? 
             '<i class="bx bx-check"></i> Healthy' : 
-            '<i class="bx bx-x"></i> High';
-    }
-
-    const debtStatus = document.getElementById('debtStatus');
-    if (debtStatus) {
-        debtStatus.innerHTML = metrics.debt_ratio <= 30 ? 
-            '<i class="bx bx-check"></i> Good' : 
             '<i class="bx bx-x"></i> High';
     }
 }
