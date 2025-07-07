@@ -219,7 +219,7 @@ try {
     $trendsQuery = "SELECT DATE_FORMAT(date, '%Y-%m') as period, DATE_FORMAT(date, '%b %Y') as display_period, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense FROM transactions WHERE status != 'deleted' AND date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) GROUP BY DATE_FORMAT(date, '%Y-%m'), DATE_FORMAT(date, '%b %Y') ORDER BY period ASC LIMIT 12";
     $trendsData = $conn->query($trendsQuery)->fetchAll(PDO::FETCH_ASSOC);
 
-    // Kolom analisis diperbanyak hingga H (tanpa savings)
+    // Kolom analisis diperbanyak hingga H
     $trendHeaders = ['📅 Period', '💰 Income', '💸 Expenses', '💎 Net Flow', '⚡ Efficiency', '📈 Growth', '🎯 Score', '🔮 Forecast'];
     foreach($trendHeaders as $i => $header) { $trends->setCellValue(chr(65 + $i) . '3', $header); }
     $trends->getStyle('A3:H3')->applyFromArray(['font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],'fill' => ['fillType' => Fill::FILL_GRADIENT_LINEAR, 'startColor' => ['rgb' => $theme['primary']], 'endColor' => ['rgb' => $theme['accent']]],'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],]);
