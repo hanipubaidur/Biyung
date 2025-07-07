@@ -54,8 +54,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadDashboardStats(period);  // Ini akan mengupdate semua stats sesuai period
     });
 
-    // Load other components
-    loadSavingsData();
     loadRecentTransactions();
 
     // Add monthly comparison chart load
@@ -301,9 +299,13 @@ function updateExpenseChart(data) {
             labels: data.map(item => item.category_name),
             datasets: [{
                 data: data.map(item => parseFloat(item.total)),
-                backgroundColor: data.map(item => 
-                    CHART_COLORS.expenseCategories[item.category_name] || '#858796'
-                ),
+                backgroundColor: data.map((item, idx) => {
+                    // Gunakan warna default Chart.js
+                    const palette = [
+                        '#4e73df','#1cc88a','#36b9cc','#f6c23e','#e74a3b','#858796','#5a5c69','#2c9faf','#7E57C2','#4A5568'
+                    ];
+                    return palette[idx % palette.length];
+                }),
                 borderWidth: 1,
                 borderColor: '#fff'
             }]
@@ -376,39 +378,6 @@ function showLoading() {
 
 function hideLoading() {
     document.body.style.cursor = 'default';
-}
-
-async function loadSavingsData() {
-    try {
-        const response = await fetch('api/get_savings_summary.php');
-        const data = await response.json();
-        
-        const container = document.getElementById('activeSavings');
-        if (!container) return;
-
-        if (!data.success) {
-            container.innerHTML = `
-                <div class="col-12 text-center text-muted">
-                    <p>No savings data available</p>
-                </div>`;
-            return;
-        }
-
-        // Update total savings display
-        const totalSavings = data.total_savings || 0;
-        container.innerHTML = `
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h4>Total Savings</h4>
-                    <h3>${formatCurrency(totalSavings)}</h3>
-                </div>
-                <div class="progress mt-2" style="height: 10px;">
-                    <div class="progress-bar bg-success" style="width: 100%"></div>
-                </div>
-            </div>`;
-    } catch (error) {
-        console.error('Error loading savings:', error);
-    }
 }
 
 async function loadRecentTransactions() {
