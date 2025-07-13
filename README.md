@@ -6,6 +6,13 @@
 - ✅ Financial Overview menampilkan Total Product Sold (total produk terjual).
 - ✅ Period selector global di laporan/report, chart dan tabel mengikuti periode yang dipilih.
 - ✅ Produk terlaris di chart penjualan produk diurutkan otomatis.
+- ✅ **Manajemen produk & stok kini lebih mudah:**  
+  - Tambah produk baru, update stok, edit harga, dan nonaktifkan produk langsung dari halaman kategori.
+  - Jika menambah produk dengan nama & harga sama, stok otomatis diakumulasikan.
+  - Hapus produk/kategori/income source: jika sudah pernah dipakai, hanya dinonaktifkan (soft delete).
+- ✅ **Export laporan ke Excel kini lebih lengkap:**  
+  - Sheet transaksi menampilkan kolom quantity, harga produk, dan total amount.
+  - Semua data transaksi produk terekspor dengan detail quantity dan harga per item.
 
 <div align="center">
   
@@ -56,7 +63,10 @@ Manajemen karyawan terintegrasi.
   Tambah/edit/nonaktifkan karyawan, serta pencatatan gaji otomatis terhubung ke data karyawan.
 
 - **Manajemen Produk & Stok:**  
-  Tambah produk, atur stok, dan harga. Stok otomatis berkurang saat ada penjualan.
+  - Tambah produk baru, update stok, edit harga, dan nonaktifkan produk langsung dari halaman kategori.
+  - Jika menambah produk dengan nama & harga sama, stok otomatis diakumulasikan.
+  - Hapus produk/kategori/income source: jika sudah pernah dipakai, hanya dinonaktifkan (soft delete).
+  - Stok otomatis berkurang saat ada penjualan.
 
 - **Kategori Dinamis:**  
   Tambah/hapus sumber pemasukan dan kategori pengeluaran sesuai kebutuhan usaha.
@@ -65,6 +75,9 @@ Manajemen karyawan terintegrasi.
   Laporan keuangan lengkap, grafik cashflow, breakdown pengeluaran, analisis performa bulanan, ekspor data ke Excel.
   Period selector global di laporan, chart dan tabel mengikuti periode yang dipilih.
   Chart produk terlaris otomatis diurutkan.
+
+  **Export laporan ke Excel kini lebih lengkap:**
+  Sheet transaksi menampilkan kolom quantity, harga produk, dan total amount.
 
 - **Responsive & User Friendly:**  
   Tampilan modern, mudah digunakan di HP maupun laptop.
@@ -76,7 +89,7 @@ Manajemen karyawan terintegrasi.
 
 ### ✨ Fitur Lainnya
 
-- Export data ke Excel
+- Export data ke Excel (dengan detail quantity & harga produk)
 - Riwayat transaksi terbaru
 - Tabel ringkasan produk terjual
 
