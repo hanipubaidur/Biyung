@@ -1,11 +1,11 @@
 # 🥤 Biyung - Manajemen Keuangan Jualan Es Ubi Ungu
 
 ## 📝 Pembaruan Terbaru
-- ✅ Penambahan fitur quantity pada transaksi produk, amount otomatis = harga x quantity.
-- ✅ Financial Overview kini menampilkan Total Product Sold (total produk terjual).
-- ✅ "Last Update" tetap tampil walaupun belum ada transaksi (tampil "No transactions yet").
-- ✅ Semua fitur debt/loan & savings dihapus, sesuai kebutuhan Biyung.
-- ✅ Tampilan dan logika laporan, dashboard, dan chart disederhanakan seperti MoneyFlow.
+- ✅ Validasi quantity pada transaksi produk: user tidak bisa input lebih dari stok, muncul pesan error jika melebihi stok.
+- ✅ Amount pada transaksi produk otomatis mengikuti harga x quantity.
+- ✅ Financial Overview menampilkan Total Product Sold (total produk terjual).
+- ✅ Period selector global di laporan/report, chart dan tabel mengikuti periode yang dipilih.
+- ✅ Produk terlaris di chart penjualan produk diurutkan otomatis.
 
 <div align="center">
   
@@ -50,7 +50,7 @@ Manajemen karyawan terintegrasi.
 
 - **Pencatatan Transaksi:**  
   Catat pemasukan (cash, transfer, QRIS, produk) dan pengeluaran (modal, gaji, dll) dengan kategori yang mudah dipilih.  
-  Untuk transaksi produk, input quantity dan amount otomatis dihitung (harga x quantity).
+  Untuk transaksi produk, input quantity dan amount otomatis dihitung (harga x quantity), serta validasi tidak bisa melebihi stok.
 
 - **Manajemen Karyawan:**  
   Tambah/edit/nonaktifkan karyawan, serta pencatatan gaji otomatis terhubung ke data karyawan.
@@ -63,6 +63,8 @@ Manajemen karyawan terintegrasi.
 
 - **Laporan & Analisis:**  
   Laporan keuangan lengkap, grafik cashflow, breakdown pengeluaran, analisis performa bulanan, ekspor data ke Excel.
+  Period selector global di laporan, chart dan tabel mengikuti periode yang dipilih.
+  Chart produk terlaris otomatis diurutkan.
 
 - **Responsive & User Friendly:**  
   Tampilan modern, mudah digunakan di HP maupun laptop.
