@@ -140,29 +140,44 @@ ob_start();
                                     </thead>
                                     <tbody id="monthlyStatsBody">
                                         <?php
-                                        // Query untuk 6 bulan terakhir
+                                        // Ambil 12 bulan (Jan - Dec) tahun berjalan
+                                        $months = [];
+                                        $year = date('Y');
+                                        for ($i = 1; $i <= 12; $i++) {
+                                            $months[] = date('M Y', strtotime("$year-$i-01"));
+                                        }
+
+                                        // Query untuk 12 bulan (hanya bulan yang ada transaksi)
                                         $monthlyStatsQuery = "SELECT 
                                             DATE_FORMAT(date, '%b %Y') as month,
+                                            MONTH(date) as month_num,
                                             SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
                                             SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
                                         FROM transactions 
-                                        WHERE date >= DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH)
+                                        WHERE YEAR(date) = YEAR(CURRENT_DATE)
                                         AND status = 'completed'
-                                        GROUP BY DATE_FORMAT(date, '%Y-%m'), DATE_FORMAT(date, '%b %Y')
-                                        ORDER BY DATE_FORMAT(date, '%Y-%m') DESC";
+                                        GROUP BY month_num, month
+                                        ORDER BY month_num ASC";
 
-                                        $monthlyStats = $conn->query($monthlyStatsQuery)->fetchAll();
+                                        $monthlyStatsRaw = $conn->query($monthlyStatsQuery)->fetchAll(PDO::FETCH_ASSOC);
+                                        $monthlyStatsMap = [];
+                                        foreach ($monthlyStatsRaw as $stat) {
+                                            $monthlyStatsMap[$stat['month']] = $stat;
+                                        }
+
                                         $totalIncome = 0;
                                         $totalExpense = 0;
+                                        ?>
 
-                                        foreach($monthlyStats as $stat):
+                                        <?php foreach ($months as $month): 
+                                            $stat = $monthlyStatsMap[$month] ?? ['income' => 0, 'expense' => 0];
                                             $netAmount = $stat['income'] - $stat['expense'];
                                             $totalIncome += $stat['income'];
                                             $totalExpense += $stat['expense'];
                                             $isEmpty = ($stat['income'] == 0 && $stat['expense'] == 0);
                                         ?>
                                             <tr>
-                                                <td><?= $stat['month'] ?></td>
+                                                <td><?= $month ?></td>
                                                 <td class="text-end"><?= formatCurrency($stat['income']) ?></td>
                                                 <td class="text-end"><?= formatCurrency($stat['expense']) ?></td>
                                                 <td class="text-end <?= $netAmount > 0 ? 'text-success' : ($netAmount < 0 ? 'text-danger' : '') ?>">
