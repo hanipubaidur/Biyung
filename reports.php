@@ -199,18 +199,21 @@ ob_start();
                     </div>
                 </div>
 
-                <!-- Product Sales Chart with period selector and show line toggle -->
+                <!-- Product Sales Chart (hapus period select di sini, gunakan global) -->
                 <div class="card mt-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="text-primary mb-0">Product Sales Chart</h6>
                             <div class="d-flex align-items-center gap-2">
-                                <select id="productSalesPeriod" class="form-select form-select-sm" style="width:auto;display:inline-block;">
-                                    <option value="day">Daily</option>
-                                    <option value="week">Weekly</option>
-                                    <option value="month" selected>Monthly</option>
-                                    <option value="year">Yearly</option>
-                                </select>
+                                <!-- Period Selector (global, satu untuk seluruh laporan) -->
+                                <div>
+                                    <select id="reportPeriod" class="form-select form-select-sm" style="width:auto;display:inline-block;">
+                                        <option value="day">Daily</option>
+                                        <option value="week">Weekly</option>
+                                        <option value="month" selected>Monthly</option>
+                                        <option value="year">Yearly</option>
+                                    </select>
+                                </div>
                                 <div class="form-check ms-2">
                                     <input class="form-check-input" type="checkbox" id="productSalesShowLine" checked>
                                     <label class="form-check-label" for="productSalesShowLine" style="font-size:0.95em;">Show Line</label>
@@ -549,25 +552,38 @@ ob_start();
 <script src="assets/js/report.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Set initial period
+    let period = document.getElementById('reportPeriod').value;
+
+    // Load all report data for selected period
+    function loadAllReport(period) {
+        loadReportData(period);
+        loadProductSalesChart(period, document.getElementById('productSalesShowLine').checked);
+        loadProductSalesSummary(period);
+    }
+
+    // Initial load
     setTimeout(() => {
-        loadReportData();
-        loadProductSalesChart(
-            document.getElementById('productSalesPeriod').value,
-            document.getElementById('productSalesShowLine').checked
-        );
+        loadAllReport(period);
     }, 100);
 
-    document.getElementById('productSalesPeriod').addEventListener('change', function() {
-        loadProductSalesChart(this.value, document.getElementById('productSalesShowLine').checked);
+    // Period selector event
+    document.getElementById('reportPeriod').addEventListener('change', function() {
+        period = this.value;
+        loadAllReport(period);
     });
+
+    // Show line toggle event
     document.getElementById('productSalesShowLine').addEventListener('change', function() {
-        loadProductSalesChart(
-            document.getElementById('productSalesPeriod').value,
-            this.checked
-        );
+        loadProductSalesChart(period, this.checked);
     });
 });
 
+// Ubah semua fungsi agar menerima parameter period
+function loadReportData(period = 'month') {
+    // ...panggil API dengan period...
+    // ...existing code...
+}
 function loadProductSalesChart(period = 'month', showLine = true) {
     fetch('api/chart-data.php?type=product_sales&period=' + encodeURIComponent(period))
         .then(r => r.json())
@@ -577,8 +593,15 @@ function loadProductSalesChart(period = 'month', showLine = true) {
             if (!ctx) return;
             if (window.productSalesChart instanceof Chart) window.productSalesChart.destroy();
 
+            // Urutkan produk berdasarkan total quantity terjual (produk terlaris di depan)
+            const sortedDatasets = data.datasets.sort((a, b) => {
+                const totalA = a.data.reduce((sum, qty) => sum + qty, 0);
+                const totalB = b.data.reduce((sum, qty) => sum + qty, 0);
+                return totalB - totalA;
+            });
+
             const labels = data.labels;
-            const datasets = data.datasets.map(ds => ({
+            const datasets = sortedDatasets.map(ds => ({
                 label: ds.label,
                 data: ds.data.map((y, i) => ({ x: labels[i], y })),
                 showLine: !!showLine,
