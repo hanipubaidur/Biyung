@@ -74,7 +74,7 @@ ob_start();
                             <option value="">-- Select Product --</option>
                             <?php foreach($products as $prod): ?>
                                 <?php if ($prod['stock'] > 0): ?>
-                                    <option value="<?= $prod['id'] ?>" data-price="<?= $prod['price'] ?>">
+                                    <option value="<?= $prod['id'] ?>" data-price="<?= $prod['price'] ?>" data-max-stock="<?= $prod['stock'] ?>">
                                         <?= htmlspecialchars($prod['name']) ?> (Stok: <?= $prod['stock'] ?>, Harga: Rp<?= number_format($prod['price'],0,',','.') ?>)
                                     </option>
                                 <?php else: ?>
@@ -88,8 +88,11 @@ ob_start();
                     </div>
                     <div class="mb-3" id="quantitySection" style="display:none;">
                         <label class="form-label">Quantity</label>
-                        <input type="number" class="form-control" name="quantity" id="quantityInput" min="1" value="1">
-                        <div class="form-text text-muted">Jumlah barang yang dibeli (hanya untuk transaksi produk).</div>
+                        <input type="number" class="form-control" name="quantity" id="quantityInput" min="1" value="1" oninput="validateQuantity(this)">
+                        <div class="form-text text-muted" id="quantityInfo">
+                            Jumlah barang yang dibeli (hanya untuk transaksi produk).
+                            <span class="text-danger" id="quantityError"></span>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Amount</label>
@@ -256,6 +259,33 @@ document.addEventListener('DOMContentLoaded', function() {
         // Tidak perlu lagi, karena akan reload halaman
     };
 });
+
+function validateQuantity(input) {
+    const selected = document.getElementById('productSelectDropdown').options[
+        document.getElementById('productSelectDropdown').selectedIndex
+    ];
+    
+    const maxStock = parseInt(selected.getAttribute('data-max-stock')) || 0;
+    const price = parseInt(selected.dataset.price) || 0;
+    let quantity = parseInt(input.value) || 0;
+    const quantityError = document.getElementById('quantityError');
+    
+    // Reset error message
+    quantityError.textContent = '';
+    
+    // Jika quantity > stok, set ke nilai maksimum stok
+    if (quantity > maxStock) {
+        quantity = maxStock;
+        input.value = maxStock;
+        quantityError.textContent = `Maksimal pembelian ${maxStock} item (sesuai stok)`;
+    }
+    
+    // Update amount otomatis (price x quantity)
+    const amountInput = document.getElementById('amountInput');
+    if (amountInput && price) {
+        amountInput.value = price * quantity;
+    }
+}
 </script>
 <?php
 $pageContent = ob_get_clean();
