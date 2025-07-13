@@ -6,6 +6,9 @@
 - ✅ Financial Overview menampilkan Total Product Sold (total produk terjual).
 - ✅ Period selector global di laporan/report, chart dan tabel mengikuti periode yang dipilih.
 - ✅ Produk terlaris di chart penjualan produk diurutkan otomatis.
+- ✅ **Monthly Comparison kini selalu tampil 12 bulan penuh (Jan–Des) tahun berjalan:**  
+  - Jika tidak ada transaksi di bulan tertentu, tetap tampil dengan status "No Data".
+  - Status Surplus, Deficit, Break Even, dan No Data kini lebih jelas dan konsisten.
 - ✅ **Manajemen produk & stok kini lebih mudah:**  
   - Tambah produk baru, update stok, edit harga, dan nonaktifkan produk langsung dari halaman kategori.
   - Jika menambah produk dengan nama & harga sama, stok otomatis diakumulasikan.
@@ -75,9 +78,8 @@ Manajemen karyawan terintegrasi.
   Laporan keuangan lengkap, grafik cashflow, breakdown pengeluaran, analisis performa bulanan, ekspor data ke Excel.
   Period selector global di laporan, chart dan tabel mengikuti periode yang dipilih.
   Chart produk terlaris otomatis diurutkan.
-
-  **Export laporan ke Excel kini lebih lengkap:**
-  Sheet transaksi menampilkan kolom quantity, harga produk, dan total amount.
+  **Monthly Comparison selalu tampil 12 bulan penuh (Jan–Des) tahun berjalan, status "No Data" jika tidak ada transaksi.**
+  **Export laporan ke Excel kini lebih lengkap:** sheet transaksi menampilkan kolom quantity, harga produk, dan total amount.
 
 - **Responsive & User Friendly:**  
   Tampilan modern, mudah digunakan di HP maupun laptop.
