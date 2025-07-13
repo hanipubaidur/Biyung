@@ -344,149 +344,132 @@ try {
     }
     elseif ($type === 'product_sales') {
         $period = $_GET['period'] ?? 'month';
-        if ($period === 'year') {
-            // Rolling window: 6 tahun, dari tahun berjalan-1 sampai tahun berjalan+4
-            $currentYear = date('Y');
-            $startYear = $currentYear - 1;
-            $endYear = $currentYear + 4;
-            $query = "SELECT 
-                p.id as product_id,
-                p.name as product_name,
-                p.price as product_price,
-                YEAR(t.date) as period_label,
-                COUNT(t.id) as qty
-            FROM transactions t
-            INNER JOIN products p ON t.product_id = p.id
-            WHERE t.type = 'income'
-                AND t.status = 'completed'
-                AND YEAR(t.date) >= $startYear
-                AND YEAR(t.date) <= $endYear
-                AND p.is_active = 1
-            GROUP BY p.id, p.name, p.price, period_label
-            ORDER BY p.name, p.price, period_label";
-            $labels = [];
-            for ($y = $startYear; $y <= $endYear; $y++) $labels[] = (string)$y;
-        } elseif ($period === 'month') {
-            $year = date('Y');
-            $query = "SELECT 
-                p.id as product_id,
-                p.name as product_name,
-                p.price as product_price,
-                MONTH(t.date) as period_num,
-                DATE_FORMAT(t.date, '%b') as period_label,
-                COUNT(t.id) as qty
-            FROM transactions t
-            INNER JOIN products p ON t.product_id = p.id
-            WHERE t.type = 'income'
-                AND t.status = 'completed'
-                AND YEAR(t.date) = $year
-                AND p.is_active = 1
-            GROUP BY p.id, p.name, p.price, period_num, period_label
-            ORDER BY p.name, p.price, period_num";
-            $labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        } elseif ($period === 'week') {
-            $year = date('Y');
-            $query = "SELECT 
-                p.id as product_id,
-                p.name as product_name,
-                p.price as product_price,
-                FLOOR((DAYOFMONTH(t.date)-1)/7) + 1 as period_num,
-                CONCAT('Week ', FLOOR((DAYOFMONTH(t.date)-1)/7) + 1) as period_label,
-                COUNT(t.id) as qty
-            FROM transactions t
-            INNER JOIN products p ON t.product_id = p.id
-            WHERE t.type = 'income'
-                AND t.status = 'completed'
-                AND YEAR(t.date) = $year
-                AND p.is_active = 1
-            GROUP BY p.id, p.name, p.price, period_num, period_label
-            ORDER BY p.name, p.price, period_num";
-            $numWeeks = ceil(date('t') / 7);
-            $labels = [];
-            for ($w = 1; $w <= $numWeeks; $w++) $labels[] = "Week $w";
-        } else {
-            $year = date('Y');
-            $month = date('m');
-            $query = "SELECT 
-                p.id as product_id,
-                p.name as product_name,
-                p.price as product_price,
-                DAY(t.date) as period_num,
-                DAY(t.date) as period_label,
-                COUNT(t.id) as qty
-            FROM transactions t
-            INNER JOIN products p ON t.product_id = p.id
-            WHERE t.type = 'income'
-                AND t.status = 'completed'
-                AND YEAR(t.date) = $year
-                AND MONTH(t.date) = $month
-                AND p.is_active = 1
-            GROUP BY p.id, p.name, p.price, period_num, period_label
-            ORDER BY p.name, p.price, period_num";
-            $days = (int)date('t');
-            $labels = [];
-            for ($d = 1; $d <= $days; $d++) $labels[] = (string)$d;
-        }
 
-        $stmt = $conn->query($query);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Ambil semua produk
+        $products = $conn->query("SELECT id, name, price FROM products ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 
-        // Susun data: labels = period_label, datasets = per produk+harga (qty integer, tidak koma)
-        $products = [];
-        $productInfo = []; // Untuk info detail produk
-        foreach ($rows as $row) {
-            $key = $row['product_name'] . ' (Rp' . number_format($row['product_price'], 0, ',', '.') . ')';
-            if (!isset($products[$key])) $products[$key] = [];
-            $products[$key][$row['period_label']] = (int)$row['qty'];
-            // Simpan info produk (nama, harga, id)
-            $productInfo[$key] = [
-                'product_id' => $row['product_id'],
-                'product_name' => $row['product_name'],
-                'product_price' => (int)$row['product_price']
-            ];
-        }
-        // Build datasets
-        $datasets = [];
-        $colorList = [
+        // Palet warna
+        $palette = [
             '#4e73df','#1cc88a','#36b9cc','#f6c23e','#e74a3b','#858796','#5a5c69','#2c9faf','#7E57C2','#4A5568'
         ];
-        $colorIdx = 0;
-        foreach ($products as $productLabel => $sales) {
-            $data = [];
-            foreach ($labels as $label) {
-                $data[] = isset($sales[$label]) ? (int)$sales[$label] : 0;
-            }
-            $datasets[] = [
-                'label' => $productLabel,
-                'data' => $data,
-                'backgroundColor' => $colorList[$colorIdx % count($colorList)],
-                'borderColor' => $colorList[$colorIdx % count($colorList)],
-                'fill' => false,
-                // Tambahan info produk
-                'product_id' => $productInfo[$productLabel]['product_id'],
-                'product_name' => $productInfo[$productLabel]['product_name'],
-                'product_price' => $productInfo[$productLabel]['product_price']
-            ];
-            $colorIdx++;
-        }
 
-        // Tambahkan summary total terjual per produk
-        $summary = [];
-        foreach ($datasets as $ds) {
-            $totalQty = array_sum($ds['data']);
-            $summary[] = [
-                'product_id' => $ds['product_id'],
-                'product_name' => $ds['product_name'],
-                'product_price' => $ds['product_price'],
-                'total_qty' => $totalQty
-            ];
+        $labels = [];
+        $labelMap = [];
+        $datasets = [];
+
+        if ($period === 'day') {
+            // Label: tanggal 1 - akhir bulan
+            $daysInMonth = (int)date('t');
+            for ($i = 1; $i <= $daysInMonth; $i++) {
+                $labels[] = $i;
+                $labelMap[$i] = $i;
+            }
+            // Query per tanggal
+            foreach ($products as $i => $product) {
+                $data = [];
+                for ($d = 1; $d <= $daysInMonth; $d++) {
+                    $where = "DATE_FORMAT(t.date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE, '%Y-%m') AND DAY(t.date) = $d";
+                    $qty = $conn->query("SELECT COALESCE(SUM(quantity),0) FROM transactions t WHERE $where AND t.product_id = {$product['id']} AND t.type='income' AND t.status='completed'")->fetchColumn();
+                    $data[] = (int)$qty;
+                }
+                $color = $palette[$i % count($palette)];
+                $datasets[] = [
+                    'label' => $product['name'] . ' (Rp' . number_format($product['price'],0,',','.') . ')',
+                    'data' => $data,
+                    'borderColor' => $color,
+                    'backgroundColor' => $color . '80'
+                ];
+            }
+        } elseif ($period === 'week') {
+            // Label: Week 1-5 (max 5 minggu per bulan)
+            $daysInMonth = (int)date('t');
+            $numWeeks = ceil($daysInMonth / 7);
+            $labels = [];
+            for ($w = 1; $w <= $numWeeks; $w++) {
+                $labels[] = "Week $w";
+            }
+            foreach ($products as $i => $product) {
+                $data = [];
+                for ($w = 1; $w <= $numWeeks; $w++) {
+                    $startDay = ($w - 1) * 7 + 1;
+                    $endDay = min($w * 7, $daysInMonth);
+                    $where = "DATE_FORMAT(t.date, '%Y-%m') = DATE_FORMAT(CURRENT_DATE, '%Y-%m') AND DAY(t.date) BETWEEN $startDay AND $endDay";
+                    $qty = $conn->query("SELECT COALESCE(SUM(quantity),0) FROM transactions t WHERE $where AND t.product_id = {$product['id']} AND t.type='income' AND t.status='completed'")->fetchColumn();
+                    $data[] = (int)$qty;
+                }
+                $color = $palette[$i % count($palette)];
+                $datasets[] = [
+                    'label' => $product['name'] . ' (Rp' . number_format($product['price'],0,',','.') . ')',
+                    'data' => $data,
+                    'borderColor' => $color,
+                    'backgroundColor' => $color . '80'
+                ];
+            }
+        } elseif ($period === 'month') {
+            // Label: Jan - Dec
+            $labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            foreach ($products as $i => $product) {
+                $data = [];
+                for ($m = 1; $m <= 12; $m++) {
+                    $where = "YEAR(t.date) = YEAR(CURRENT_DATE) AND MONTH(t.date) = $m";
+                    $qty = $conn->query("SELECT COALESCE(SUM(quantity),0) FROM transactions t WHERE $where AND t.product_id = {$product['id']} AND t.type='income' AND t.status='completed'")->fetchColumn();
+                    $data[] = (int)$qty;
+                }
+                $color = $palette[$i % count($palette)];
+                $datasets[] = [
+                    'label' => $product['name'] . ' (Rp' . number_format($product['price'],0,',','.') . ')',
+                    'data' => $data,
+                    'borderColor' => $color,
+                    'backgroundColor' => $color . '80'
+                ];
+            }
+        } elseif ($period === 'year') {
+            // Label: 5 tahun, tahun sekarang di tengah
+            $currentYear = (int)date('Y');
+            $years = [];
+            for ($i = -2; $i <= 2; $i++) {
+                $years[] = $currentYear + $i;
+            }
+            $labels = $years;
+            foreach ($products as $i => $product) {
+                $data = [];
+                foreach ($years as $y) {
+                    $where = "YEAR(t.date) = $y";
+                    $qty = $conn->query("SELECT COALESCE(SUM(quantity),0) FROM transactions t WHERE $where AND t.product_id = {$product['id']} AND t.type='income' AND t.status='completed'")->fetchColumn();
+                    $data[] = (int)$qty;
+                }
+                $color = $palette[$i % count($palette)];
+                $datasets[] = [
+                    'label' => $product['name'] . ' (Rp' . number_format($product['price'],0,',','.') . ')',
+                    'data' => $data,
+                    'borderColor' => $color,
+                    'backgroundColor' => $color . '80'
+                ];
+            }
+        } else {
+            // Default: monthly
+            $labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            foreach ($products as $i => $product) {
+                $data = [];
+                for ($m = 1; $m <= 12; $m++) {
+                    $where = "YEAR(t.date) = YEAR(CURRENT_DATE) AND MONTH(t.date) = $m";
+                    $qty = $conn->query("SELECT COALESCE(SUM(quantity),0) FROM transactions t WHERE $where AND t.product_id = {$product['id']} AND t.type='income' AND t.status='completed'")->fetchColumn();
+                    $data[] = (int)$qty;
+                }
+                $color = $palette[$i % count($palette)];
+                $datasets[] = [
+                    'label' => $product['name'] . ' (Rp' . number_format($product['price'],0,',','.') . ')',
+                    'data' => $data,
+                    'borderColor' => $color,
+                    'backgroundColor' => $color . '80'
+                ];
+            }
         }
 
         echo json_encode([
             'success' => true,
             'labels' => $labels,
-            'datasets' => $datasets,
-            'summary' => $summary // Untuk tabel/analisis tambahan di frontend
+            'datasets' => $datasets
         ]);
         exit;
     }
