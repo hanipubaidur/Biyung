@@ -164,3 +164,75 @@ function updateExportPeriod(period) {
 if (document.getElementById('productSalesChart')) {
     loadProductSalesChart();
 }
+
+function loadProductSalesChart(period = 'month', showLine = true) {
+    fetch('api/chart-data.php?type=product_sales&period=' + encodeURIComponent(period))
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            const ctx = document.getElementById('productSalesChart');
+            if (!ctx) return;
+            if (window.productSalesChart instanceof Chart) window.productSalesChart.destroy();
+
+            // Urutkan produk terlaris
+            const sortedDatasets = data.datasets.sort((a, b) => {
+                const totalA = a.data.reduce((sum, qty) => sum + qty, 0);
+                const totalB = b.data.reduce((sum, qty) => sum + qty, 0);
+                return totalB - totalA;
+            });
+
+            const labels = data.labels;
+            const datasets = sortedDatasets.map(ds => ({
+                label: ds.label,
+                data: ds.data.map((y, i) => ({ x: labels[i], y })),
+                showLine: !!showLine,
+                fill: false,
+                borderColor: ds.borderColor,
+                backgroundColor: ds.backgroundColor,
+                pointBackgroundColor: ds.backgroundColor,
+                pointBorderColor: ds.borderColor,
+                pointRadius: 6,
+                pointHoverRadius: 9,
+                tension: 0.3
+            }));
+
+            window.productSalesChart = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y ?? 0} pcs (${context.dataIndex + 1})`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: labels,
+                            title: { display: true, text: 
+                                period === 'year' ? 'Year' :
+                                period === 'month' ? 'Month' :
+                                period === 'week' ? 'Week' : 'Day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Qty Terjual' },
+                            ticks: {
+                                stepSize: 1,
+                                precision: 0,
+                                callback: value => value
+                            }
+                        }
+                    }
+                }
+            });
+        });
+}
