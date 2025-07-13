@@ -149,6 +149,29 @@ if (isset($_POST['delete_product'])) {
     }
 }
 
+// Handle edit stock (tambah/kurang stok produk)
+if (isset($_POST['edit_stock'])) {
+    try {
+        $id = intval($_POST['id']);
+        $delta = intval($_POST['stock_delta']);
+        // Ambil stok lama
+        $stmt = $conn->prepare("SELECT stock FROM products WHERE id = ?");
+        $stmt->execute([$id]);
+        $oldStock = $stmt->fetchColumn();
+        if ($oldStock === false) throw new Exception('Product not found');
+        $newStock = max(0, $oldStock + $delta);
+        $stmt = $conn->prepare("UPDATE products SET stock = ? WHERE id = ?");
+        $stmt->execute([$newStock, $id]);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'message' => 'Stock updated', 'stock' => $newStock]);
+        exit;
+    } catch(Exception $e) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
+}
+
 // Get active income sources
 $incomeSources = $conn->query("SELECT * FROM income_sources WHERE is_active = TRUE ORDER BY source_name")->fetchAll();
 
@@ -237,12 +260,17 @@ ob_start();
                     <div class="list-group-item d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="mb-0"><?= htmlspecialchars($product['name']) ?></h6>
-                            <small class="text-muted">Stock: <?= $product['stock'] ?></small>
+                            <small class="text-muted">Stock: <span id="stock-<?= $product['id'] ?>"><?= $product['stock'] ?></span></small>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                onclick="deleteProduct(<?= $product['id'] ?>, '<?= htmlspecialchars($product['name']) ?>')">
-                            <i class='bx bx-trash'></i>
-                        </button>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editStock(<?= $product['id'] ?>, '<?= htmlspecialchars(addslashes($product['name'])) ?>', <?= $product['stock'] ?>)">
+                                <i class='bx bx-edit'></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                    onclick="deleteProduct(<?= $product['id'] ?>, '<?= htmlspecialchars($product['name']) ?>')">
+                                <i class='bx bx-trash'></i>
+                            </button>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -456,6 +484,50 @@ function deleteProduct(id, name) {
                     else throw new Error(data.error || 'Failed to delete');
                 })
                 .catch(error => Swal.fire('Error!', error.message, 'error'));
+        }
+    });
+}
+
+function editStock(id, name, currentStock) {
+    Swal.fire({
+        title: 'Edit Stock',
+        html: `
+            <div class="mb-2 text-start">
+                <b>${name}</b><br>
+                Current Stock: <span class="badge bg-info">${currentStock}</span>
+            </div>
+            <input type="number" id="stockDelta" class="swal2-input" placeholder="e.g. -2 untuk kurangi, 5 untuk tambah" value="-1">
+            <div class="form-text text-muted">Masukkan angka negatif untuk mengurangi stok, positif untuk menambah.</div>
+        `,
+        inputAttributes: { min: -currentStock },
+        showCancelButton: true,
+        confirmButtonText: 'Update',
+        preConfirm: () => {
+            const delta = parseInt(document.getElementById('stockDelta').value, 10);
+            if (isNaN(delta) || delta === 0) {
+                Swal.showValidationMessage('Isi perubahan stok (tidak boleh 0)');
+                return false;
+            }
+            return delta;
+        }
+    }).then(result => {
+        if (result.isConfirmed && result.value) {
+            const formData = new FormData();
+            formData.append('edit_stock', '1');
+            formData.append('id', id);
+            formData.append('stock_delta', result.value);
+            fetch('categories.php', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success', 'Stock updated', 'success');
+                        // Update tampilan stok tanpa reload
+                        document.getElementById('stock-' + id).textContent = data.stock;
+                    } else {
+                        throw new Error(data.error || 'Failed to update stock');
+                    }
+                })
+                .catch(error => Swal.fire('Error', error.message, 'error'));
         }
     });
 }
