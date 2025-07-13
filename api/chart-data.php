@@ -279,7 +279,7 @@ try {
         exit;
     }
     elseif ($type === 'monthly_comparison') {
-        // Get monthly comparison data for current year (Jan-Dec)
+        // Query untuk 12 bulan tahun berjalan
         $query = "SELECT 
             DATE_FORMAT(date, '%b') as month,
             MONTH(date) as month_num,
@@ -312,7 +312,7 @@ try {
             foreach ($monthlyData as $data) {
                 if ($data['month_num'] == $num) {
                     $completeData[] = [
-                        'month' => $month,
+                        'month' => $month . ' ' . date('Y'),
                         'income' => floatval($data['income']),
                         'expense' => floatval($data['expense']),
                         'net' => floatval($data['income']) - floatval($data['expense'])
@@ -323,7 +323,7 @@ try {
             }
             if (!$found) {
                 $completeData[] = [
-                    'month' => $month,
+                    'month' => $month . ' ' . date('Y'),
                     'income' => 0,
                     'expense' => 0,
                     'net' => 0
