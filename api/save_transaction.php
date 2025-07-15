@@ -46,6 +46,9 @@ try {
         }
     }
 
+    // Ambil shift_id
+    $shift_id = isset($_POST['shift_id']) && $_POST['shift_id'] !== '' ? intval($_POST['shift_id']) : null;
+
     // Start transaction
     $conn->beginTransaction();
 
@@ -54,14 +57,14 @@ try {
         if (isset($_POST['transaction_id'])) {
             $query = "UPDATE transactions 
                      SET type = ?, amount = ?, quantity = ?, date = ?, description = ?,
-                         $sourceColumn = ?, employee_id = ?, product_id = ?
+                         $sourceColumn = ?, employee_id = ?, product_id = ?, shift_id = ?
                      WHERE id = ?";
-            $params = [$type, $amount, $quantity, $date, $description, $categoryId, $employee_id, $product_id, $_POST['transaction_id']];
+            $params = [$type, $amount, $quantity, $date, $description, $categoryId, $employee_id, $product_id, $shift_id, $_POST['transaction_id']];
         } else {
             $query = "INSERT INTO transactions 
-                     (type, amount, quantity, date, description, $sourceColumn, employee_id, product_id, status) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed')";
-            $params = [$type, $amount, $quantity, $date, $description, $categoryId, $employee_id, $product_id];
+                     (type, amount, quantity, date, description, $sourceColumn, employee_id, product_id, shift_id, status) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed')";
+            $params = [$type, $amount, $quantity, $date, $description, $categoryId, $employee_id, $product_id, $shift_id];
         }
 
         $stmt = $conn->prepare($query);
