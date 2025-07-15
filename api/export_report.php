@@ -39,8 +39,8 @@ try {
     $executive->setTitle('📊 Dashboard Eksekutif');
     
     // Informasi brand telah disesuaikan
-    $executive->setCellValue('A1', 'Kedai');
-    $executive->setCellValue('A2', 'Analisis Keuangan | Kedai');
+    $executive->setCellValue('A1', 'Biyung');
+    $executive->setCellValue('A2', 'Analisis Keuangan | Biyung');
     $executive->setCellValue('A3', 'DASHBOARD EKSEKUTIF & ANALITIK');
     $executive->setCellValue('A4', '📅 ' . date('l, d F Y • G:i T'));
     
@@ -395,7 +395,7 @@ try {
 
     // Finalisasi: sheet aktif dikembalikan ke index 0 (Dashboard Eksekutif)
     $spreadsheet->setActiveSheetIndex(0);
-    $filename = "Kedai_Laporan_Lengkap_" . date('Y-m-d_His') . ".xlsx";
+    $filename = "Biyung_Laporan_Lengkap_" . date('Y-m-d_His') . ".xlsx";
 
     ob_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
