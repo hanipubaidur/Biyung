@@ -33,26 +33,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load initial data
     const defaultPeriod = 'month';
-    document.querySelector(`[data-period="${defaultPeriod}"]`).classList.add('active');
-    loadChartData(defaultPeriod);
-    loadDashboardStats(defaultPeriod);  // Ini akan mengupdate semua stats
+    const periodSelector = document.querySelector('.period-selector');
+    if (periodSelector) {
+        const defaultBtn = periodSelector.querySelector(`[data-period="${defaultPeriod}"]`);
+        if (defaultBtn) defaultBtn.classList.add('active');
+        periodSelector.addEventListener('click', function(e) {
+            const button = e.target.closest('[data-period]');
+            if (!button) return;
 
-    // Setup period selector
-    document.querySelector('.period-selector').addEventListener('click', function(e) {
-        const button = e.target.closest('[data-period]');
-        if (!button) return;
-
-        const period = button.dataset.period;
-        
-        // Update active state
-        document.querySelectorAll('[data-period]').forEach(btn => 
-            btn.classList.remove('active'));
-        button.classList.add('active');
-        
-        // Load new data
-        loadChartData(period);
-        loadDashboardStats(period);  // Ini akan mengupdate semua stats sesuai period
-    });
+            const period = button.dataset.period;
+            
+            // Update active state
+            periodSelector.querySelectorAll('[data-period]').forEach(btn => 
+                btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Load new data
+            loadChartData(period);
+            loadDashboardStats(period);  // Ini akan mengupdate semua stats sesuai period
+        });
+        loadChartData(defaultPeriod);
+        loadDashboardStats(defaultPeriod);
+    }
 
     loadRecentTransactions();
 });
@@ -386,6 +388,8 @@ async function loadRecentTransactions() {
 
         if (loading) loading.style.display = 'none';
         
+        if (!container) return; // <-- Tambahkan pengecekan agar tidak error
+
         if (!Array.isArray(transactions) || transactions.length === 0) {
             container.innerHTML = `
                 <div class="text-center p-4 text-muted">
@@ -417,11 +421,14 @@ async function loadRecentTransactions() {
 
     } catch (error) {
         console.error('Error loading transactions:', error);
-        document.getElementById('recentTransactions').innerHTML = `
-            <div class="text-center p-4 text-danger">
-                <i class='bx bx-error-circle me-2'></i>
-                Failed to load transactions
-            </div>`;
+        const container = document.getElementById('recentTransactions');
+        if (container) {
+            container.innerHTML = `
+                <div class="text-center p-4 text-danger">
+                    <i class='bx bx-error-circle me-2'></i>
+                    Failed to load transactions
+                </div>`;
+        }
     }
 }
 
