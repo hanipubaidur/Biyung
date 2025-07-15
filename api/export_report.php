@@ -259,19 +259,21 @@ try {
     $transactions = $spreadsheet->createSheet();
     $transactions->setTitle('📋 Data Transaksi');
 
-    // Panjangkan header sampai kolom H
+    // Judul utama, diperpanjang hingga kolom J agar sesuai dengan tabel
     $transactions->setCellValue('A1', 'DATABASE TRANSAKSI LENGKAP');
-    $transactions->mergeCells('A1:H1');
-    $transactions->getStyle('A1')->applyFromArray([
+    $transactions->mergeCells('A1:J1'); // Diperbaiki dari H1 ke J1
+    $transactions->getStyle('A1:J1')->applyFromArray([
         'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $theme['secondary']]],
-        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['light']]],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2E8F0']], // Warna abu-abu muda
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
     ]);
     $transactions->getRowDimension('1')->setRowHeight(30);
 
-    // Kolom: Date, Type, Category, Product Name, Product Price, Quantity, Amount, Description, Shift, Shift Name
+    // Header untuk tabel data utama
     $transHeaders = ['Tanggal', 'Tipe', 'Kategori', 'Nama Produk', 'Harga Produk', 'Jumlah', 'Nominal', 'Deskripsi', 'Shift', 'Nama Shift'];
-    foreach($transHeaders as $i => $header) { $transactions->setCellValue(chr(65 + $i).'3', $header); }
+    foreach($transHeaders as $i => $header) { 
+        $transactions->setCellValue(chr(65 + $i).'3', $header); 
+    }
     $transactions->getStyle('A3:J3')->applyFromArray([
         'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['accent']]],
@@ -279,7 +281,54 @@ try {
     ]);
     $transactions->getRowDimension('3')->setRowHeight(20);
 
-    // Query transaksi lengkap dengan produk, quantity, shift
+    // Judul untuk kotak ringkasan, dimulai dari L3
+    $transactions->setCellValue('L3', 'RINGKASAN TRANSAKSI');
+    $transactions->mergeCells('L3:P3');
+    $transactions->getStyle('L3:P3')->applyFromArray([
+        'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['primary']]],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => $theme['primary']]]]
+    ]);
+
+    // Mengambil data dari query summary di awal, bukan menghitung ulang
+    $netFlow = $summary['total_income'] - $summary['total_expense'];
+    $summaryItems = [
+        ['Total Pemasukan', $summary['total_income'], $theme['success']],
+        ['Total Pengeluaran', $summary['total_expense'], $theme['danger']],
+        ['Net', $netFlow, $netFlow >= 0 ? $theme['success'] : $theme['danger']]
+    ];
+
+    $summaryRow = 4; // Mulai data ringkasan dari baris 4
+    foreach ($summaryItems as $item) {
+        $label = $item[0];
+        $value = $item[1];
+        $color = $item[2];
+
+        // Kolom Label (L dan M)
+        $transactions->setCellValue("L{$summaryRow}", $label);
+        $transactions->mergeCells("L{$summaryRow}:M{$summaryRow}");
+        $transactions->getStyle("L{$summaryRow}:M{$summaryRow}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'indent' => 1],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['light']]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]]
+        ]);
+
+        // Kolom Nilai (N, O, P)
+        $transactions->setCellValue("N{$summaryRow}", 'Rp ' . number_format($value, 0, ',', '.'));
+        $transactions->mergeCells("N{$summaryRow}:P{$summaryRow}");
+        $transactions->getStyle("N{$summaryRow}:P{$summaryRow}")->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => $color]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT, 'vertical' => Alignment::VERTICAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]]
+        ]);
+        
+        $summaryRow++;
+    }
+
+    // Query transaksi lengkap: kolom shift_name = nama shift, kolom employee_name = nama karyawan bertugas di shift
     $transQuery = "SELECT 
         t.date, 
         t.type, 
@@ -289,8 +338,12 @@ try {
         CASE WHEN t.type = 'income' THEN i.source_name ELSE e.category_name END as category,
         p.name as product_name,
         p.price as product_price,
-        t.shift_id,
-        s.name as shift_name
+        s.name as shift_name, -- Nama shift (Pagi/Siang/Malam)
+        (
+            SELECT GROUP_CONCAT(emp2.name SEPARATOR ', ')
+            FROM employees emp2
+            WHERE emp2.shift_id = t.shift_id AND emp2.status = 'active'
+        ) as employee_names -- Nama karyawan bertugas di shift
     FROM transactions t
     LEFT JOIN income_sources i ON t.income_source_id = i.id
     LEFT JOIN expense_categories e ON t.expense_category_id = e.id
@@ -301,6 +354,7 @@ try {
     LIMIT 500";
     $transData = $conn->query($transQuery)->fetchAll(PDO::FETCH_ASSOC);
 
+    // Loop untuk mengisi data utama
     $row = 4;
     foreach($transData as $t) {
         $values = [
@@ -312,8 +366,8 @@ try {
             $t['quantity'] ?: 1,
             $t['amount'] ? 'Rp ' . number_format($t['amount'], 0, ',', '.') : '-',
             $t['description'] ?: '-',
-            $t['shift_id'] ?: '-',
-            $t['shift_name'] ?: '-'
+            $t['shift_name'] ?: '-',         // Nama shift (Pagi/Siang/Malam)
+            $t['employee_names'] ?: '-'      // Nama karyawan bertugas di shift (bisa lebih dari satu, dipisah koma)
         ];
         foreach($values as $i => $value) { $transactions->setCellValue(chr(65 + $i) . $row, $value); }
         $transactions->getStyle("A$row:J$row")->applyFromArray([
@@ -321,63 +375,33 @@ try {
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
         ]);
+        // Perataan sel individu (tidak ada perubahan)
         $transactions->getStyle("A$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $transactions->getStyle("B$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $transactions->getStyle("C$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $transactions->getStyle("E$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $transactions->getStyle("F$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $transactions->getStyle("G$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $transactions->getStyle("H$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-        $transactions->getStyle("I$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-        $transactions->getStyle("J$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $transactions->getStyle("H$row:J$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $row++;
     }
 
-    $summaryStartRow = $row + 1;
-    $transactions->setCellValue("A$summaryStartRow", "RINGKASAN TRANSAKSI");
-    $transactions->mergeCells("A$summaryStartRow:J$summaryStartRow");
-    $transactions->getStyle("A$summaryStartRow:J$summaryStartRow")->applyFromArray([
-        'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
-        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['primary']]],
-        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-    ]);
-    
-    $totalIncome = array_sum(array_column(array_filter($transData, fn($t) => $t['type'] === 'income'), 'amount'));
-    $totalExpense = array_sum(array_column(array_filter($transData, fn($t) => $t['type'] === 'expense'), 'amount'));
-    $netFlow = $totalIncome - $totalExpense;
-    $summaryData = [
-        ['Total Pemasukan', '', '', '', '', '', 'Rp ' . number_format($totalIncome), $theme['success']],
-        ['Total Pengeluaran', '', '', '', '', '', 'Rp ' . number_format($totalExpense), $theme['danger']],
-        ['Net', '', '', '', '', '', 'Rp ' . number_format($netFlow), $netFlow >= 0 ? $theme['success'] : $theme['danger']]
-    ];
-    
-    $currentRow = $summaryStartRow + 1;
-    foreach ($summaryData as $data) {
-        $transactions->setCellValue("A$currentRow", $data[0]);
-        $transactions->setCellValue("G$currentRow", $data[6]);
-        $transactions->mergeCells("A$currentRow:F$currentRow");
-        $transactions->mergeCells("G$currentRow:H$currentRow");
-        $transactions->getStyle("A$currentRow:H$currentRow")->applyFromArray([
-            'font' => ['bold' => true, 'size' => 10],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['light']]],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]]
-        ]);
-        $transactions->getStyle("G$currentRow")->getFont()->getColor()->setRGB($data[7]);
-        $transactions->getStyle("G$currentRow")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $currentRow++;
+    // ** KODE RINGKASAN LAMA DI BAWAH INI SUDAH DIHAPUS **
+
+    // Atur lebar kolom otomatis untuk semua kolom yang digunakan
+    foreach(range('A', 'P') as $col) { 
+        $transactions->getColumnDimension($col)->setAutoSize(true); 
     }
 
-    foreach(range('A', 'H') as $col) { $transactions->getColumnDimension($col)->setAutoSize(true); }
-
-    // Finalisasi
+    // Finalisasi: sheet aktif dikembalikan ke index 0 (Dashboard Eksekutif)
     $spreadsheet->setActiveSheetIndex(0);
     $filename = "Kedai_Laporan_Lengkap_" . date('Y-m-d_His') . ".xlsx";
-    
+
     ob_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment; filename="'.$filename.'"');
     header('Cache-Control: max-age=0');
-    
+
     $writer = new Xlsx($spreadsheet);
     $writer->save('php://output');
     exit;
