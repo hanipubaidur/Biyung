@@ -14,12 +14,13 @@
   - Jika menambah produk dengan nama & harga sama, stok otomatis diakumulasikan.
   - Hapus produk/kategori/income source: jika sudah pernah dipakai, hanya dinonaktifkan (soft delete).
 - ✅ **Export laporan ke Excel kini lebih lengkap:**  
-  - Sheet transaksi menampilkan kolom quantity, harga produk, dan total amount.
-  - Semua data transaksi produk terekspor dengan detail quantity dan harga per item.
+  - Sheet transaksi menampilkan kolom quantity, harga produk, total amount, nama shift, dan nama karyawan sesuai shift.
+  - Semua data transaksi produk terekspor dengan detail quantity, harga per item, dan petugas shift.
+
 - ✅ **Validasi transaksi produk:**  
   - Tidak bisa input quantity melebihi stok tersedia, muncul pesan error jika melebihi stok.
   - Amount otomatis dihitung berdasarkan harga x quantity.
-  - Sheet transaksi pada export laporan menampilkan quantity dan harga produk per item.
+  - Sheet transaksi pada export laporan menampilkan quantity, harga produk per item, nama shift, dan nama karyawan.
 
 <div align="center">
   
@@ -67,7 +68,7 @@ Manajemen karyawan terintegrasi.
   Untuk transaksi produk, input quantity dan amount otomatis dihitung (harga x quantity), serta validasi tidak bisa melebihi stok.
 
 - **Manajemen Karyawan:**  
-  Tambah/edit/nonaktifkan karyawan, serta pencatatan gaji otomatis terhubung ke data karyawan.
+  Tambah/edit/nonaktifkan karyawan, serta pencatatan gaji otomatis terhubung ke data karyawan dan shift.
 
 - **Manajemen Produk & Stok:**  
   - Tambah produk baru, update stok, edit harga, dan nonaktifkan produk langsung dari halaman kategori.
@@ -84,7 +85,7 @@ Manajemen karyawan terintegrasi.
   Period selector global di laporan, chart dan tabel mengikuti periode yang dipilih.
   Chart produk terlaris otomatis diurutkan.
   **Monthly Comparison selalu tampil 12 bulan penuh (Jan–Des) tahun berjalan, status "No Data" jika tidak ada transaksi.**
-  **Export laporan ke Excel kini lebih lengkap:** sheet transaksi menampilkan kolom quantity, harga produk, dan total amount.
+  **Export laporan ke Excel kini lebih lengkap:** sheet transaksi menampilkan kolom quantity, harga produk, total amount, nama shift, dan nama karyawan sesuai shift.
 
 - **Responsive & User Friendly:**  
   Tampilan modern, mudah digunakan di HP maupun laptop.
