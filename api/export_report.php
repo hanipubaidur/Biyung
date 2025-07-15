@@ -39,8 +39,8 @@ try {
     $executive->setTitle('📊 Dashboard Eksekutif');
     
     // Informasi brand telah disesuaikan
-    $executive->setCellValue('A1', 'Biyung');
-    $executive->setCellValue('A2', 'Analisis Keuangan | Biyung');
+    $executive->setCellValue('A1', 'Kedai');
+    $executive->setCellValue('A2', 'Analisis Keuangan | Kedai');
     $executive->setCellValue('A3', 'DASHBOARD EKSEKUTIF & ANALITIK');
     $executive->setCellValue('A4', '📅 ' . date('l, d F Y • G:i T'));
     
@@ -269,17 +269,17 @@ try {
     ]);
     $transactions->getRowDimension('1')->setRowHeight(30);
 
-    // Kolom: Date, Type, Category, Product Name, Product Price, Quantity, Amount, Description
-    $transHeaders = ['Tanggal', 'Tipe', 'Kategori', 'Nama Produk', 'Harga Produk', 'Jumlah', 'Nominal', 'Deskripsi'];
+    // Kolom: Date, Type, Category, Product Name, Product Price, Quantity, Amount, Description, Shift, Shift Name
+    $transHeaders = ['Tanggal', 'Tipe', 'Kategori', 'Nama Produk', 'Harga Produk', 'Jumlah', 'Nominal', 'Deskripsi', 'Shift', 'Nama Shift'];
     foreach($transHeaders as $i => $header) { $transactions->setCellValue(chr(65 + $i).'3', $header); }
-    $transactions->getStyle('A3:H3')->applyFromArray([
+    $transactions->getStyle('A3:J3')->applyFromArray([
         'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['accent']]],
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
     ]);
     $transactions->getRowDimension('3')->setRowHeight(20);
 
-    // Query transaksi lengkap dengan produk dan quantity
+    // Query transaksi lengkap dengan produk, quantity, shift
     $transQuery = "SELECT 
         t.date, 
         t.type, 
@@ -288,11 +288,14 @@ try {
         t.description, 
         CASE WHEN t.type = 'income' THEN i.source_name ELSE e.category_name END as category,
         p.name as product_name,
-        p.price as product_price
+        p.price as product_price,
+        t.shift_id,
+        s.name as shift_name
     FROM transactions t
     LEFT JOIN income_sources i ON t.income_source_id = i.id
     LEFT JOIN expense_categories e ON t.expense_category_id = e.id
     LEFT JOIN products p ON t.product_id = p.id
+    LEFT JOIN shifts s ON t.shift_id = s.id
     WHERE t.status != 'deleted'
     ORDER BY t.date DESC, t.id DESC
     LIMIT 500";
@@ -308,10 +311,12 @@ try {
             $t['product_price'] ? 'Rp ' . number_format($t['product_price'], 0, ',', '.') : '-',
             $t['quantity'] ?: 1,
             $t['amount'] ? 'Rp ' . number_format($t['amount'], 0, ',', '.') : '-',
-            $t['description'] ?: '-'
+            $t['description'] ?: '-',
+            $t['shift_id'] ?: '-',
+            $t['shift_name'] ?: '-'
         ];
         foreach($values as $i => $value) { $transactions->setCellValue(chr(65 + $i) . $row, $value); }
-        $transactions->getStyle("A$row:H$row")->applyFromArray([
+        $transactions->getStyle("A$row:J$row")->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $t['type'] === 'income' ? 'E8F5E9' : 'FBE9E7']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'D1D5DB']]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
@@ -323,13 +328,15 @@ try {
         $transactions->getStyle("F$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $transactions->getStyle("G$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $transactions->getStyle("H$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $transactions->getStyle("I$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $transactions->getStyle("J$row")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $row++;
     }
 
     $summaryStartRow = $row + 1;
     $transactions->setCellValue("A$summaryStartRow", "RINGKASAN TRANSAKSI");
-    $transactions->mergeCells("A$summaryStartRow:H$summaryStartRow");
-    $transactions->getStyle("A$summaryStartRow:H$summaryStartRow")->applyFromArray([
+    $transactions->mergeCells("A$summaryStartRow:J$summaryStartRow");
+    $transactions->getStyle("A$summaryStartRow:J$summaryStartRow")->applyFromArray([
         'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => 'FFFFFF']],
         'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $theme['primary']]],
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -364,7 +371,7 @@ try {
 
     // Finalisasi
     $spreadsheet->setActiveSheetIndex(0);
-    $filename = "Biyung_Laporan_Lengkap_" . date('Y-m-d_His') . ".xlsx";
+    $filename = "Kedai_Laporan_Lengkap_" . date('Y-m-d_His') . ".xlsx";
     
     ob_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
