@@ -20,7 +20,8 @@ try {
                     ELSE e.category_name
                 END as category,
                 t.shift_id,
-                s.name as shift_name
+                s.name as shift_name,
+                emp.name as employee_name
               FROM transactions t
               LEFT JOIN income_sources i ON t.income_source_id = i.id
               LEFT JOIN expense_categories e ON t.expense_category_id = e.id
