@@ -16,6 +16,10 @@
 - ✅ **Export laporan ke Excel kini lebih lengkap:**  
   - Sheet transaksi menampilkan kolom quantity, harga produk, dan total amount.
   - Semua data transaksi produk terekspor dengan detail quantity dan harga per item.
+- ✅ **Validasi transaksi produk:**  
+  - Tidak bisa input quantity melebihi stok tersedia, muncul pesan error jika melebihi stok.
+  - Amount otomatis dihitung berdasarkan harga x quantity.
+  - Sheet transaksi pada export laporan menampilkan quantity dan harga produk per item.
 
 <div align="center">
   
@@ -70,6 +74,7 @@ Manajemen karyawan terintegrasi.
   - Jika menambah produk dengan nama & harga sama, stok otomatis diakumulasikan.
   - Hapus produk/kategori/income source: jika sudah pernah dipakai, hanya dinonaktifkan (soft delete).
   - Stok otomatis berkurang saat ada penjualan.
+  - Validasi transaksi produk: tidak bisa input quantity melebihi stok, muncul pesan error jika melebihi stok.
 
 - **Kategori Dinamis:**  
   Tambah/hapus sumber pemasukan dan kategori pengeluaran sesuai kebutuhan usaha.
