@@ -78,7 +78,7 @@ async function loadTransactions() {
         if (!Array.isArray(transactions) || transactions.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="text-center text-muted">
+                    <td colspan="7" class="text-center text-muted">
                         No transactions found
                     </td>
                 </tr>`;
@@ -96,6 +96,9 @@ async function loadTransactions() {
                 <td class="text-end ${t.type === 'income' ? 'text-success' : 'text-danger'}">
                     ${t.type === 'income' ? '+' : '-'} 
                     ${new Intl.NumberFormat('id-ID').format(t.amount)}
+                </td>
+                <td>
+                    ${t.shift_name ? `<span class="badge bg-info">${t.shift_name}</span>` : '-'}
                 </td>
                 <td>${t.description || '-'}</td>
                 <td>
