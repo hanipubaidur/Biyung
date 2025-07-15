@@ -363,6 +363,7 @@ ob_start();
                                         <th>Product</th>
                                         <th class="text-end">Price</th>
                                         <th class="text-end">Total Qty</th>
+                                        <!-- Tambahkan kolom Shift jika ingin menampilkan transaksi detail -->
                                     </tr>
                                 </thead>
                                 <tbody id="productSalesSummaryBody">
@@ -568,12 +569,19 @@ ob_start();
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Set initial period
-    let period = document.getElementById('reportPeriod').value;
+    const periodSelect = document.getElementById('reportPeriod');
+    const showLineCheckbox = document.getElementById('productSalesShowLine');
+
+    let period = periodSelect ? periodSelect.value : 'month';
 
     // Load all report data for selected period
     function loadAllReport(period) {
         loadReportData(period);
-        loadProductSalesChart(period, document.getElementById('productSalesShowLine').checked);
+        if (showLineCheckbox) {
+            loadProductSalesChart(period, showLineCheckbox.checked);
+        } else {
+            loadProductSalesChart(period, true);
+        }
         loadProductSalesSummary(period);
     }
 
@@ -583,15 +591,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
 
     // Period selector event
-    document.getElementById('reportPeriod').addEventListener('change', function() {
-        period = this.value;
-        loadAllReport(period);
-    });
+    if (periodSelect) {
+        periodSelect.addEventListener('change', function() {
+            period = this.value;
+            loadAllReport(period);
+        });
+    }
 
     // Show line toggle event
-    document.getElementById('productSalesShowLine').addEventListener('change', function() {
-        loadProductSalesChart(period, this.checked);
-    });
+    if (showLineCheckbox) {
+        showLineCheckbox.addEventListener('change', function() {
+            loadProductSalesChart(period, this.checked);
+        });
+    }
+
+    // Panggil fungsi untuk memuat ringkasan penjualan produk saat halaman dimuat
+    const productSalesPeriod = document.getElementById('productSalesPeriod');
+    if (productSalesPeriod) {
+        loadProductSalesSummary(productSalesPeriod.value);
+        productSalesPeriod.addEventListener('change', function() {
+            loadProductSalesSummary(this.value);
+        });
+    } else {
+        loadProductSalesSummary(period);
+    }
 });
 
 // Ubah semua fungsi agar menerima parameter period
@@ -672,8 +695,22 @@ function loadProductSalesChart(period = 'month', showLine = true) {
 }
 
 function loadProductSalesSummary(period = 'month') {
-    fetch('api/report-data.php?type=product_sales_summary&period=' + encodeURIComponent(period))
-        .then(r => r.json())
+    fetch('api/report_data.php?type=product_sales_summary&period=' + encodeURIComponent(period))
+        .then(r => {
+            if (!r.ok) {
+                // Tampilkan error jika endpoint tidak ditemukan
+                document.getElementById('productSalesSummaryBody').innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-danger text-center">
+                            API endpoint not found (404)
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('productSalesSummaryCard').style.display = '';
+                throw new Error('API endpoint not found');
+            }
+            return r.json();
+        })
         .then(data => {
             if (!data.success) return;
             const tbody = document.getElementById('productSalesSummaryBody');
@@ -691,18 +728,11 @@ function loadProductSalesSummary(period = 'month') {
             });
 
             document.getElementById('productSalesSummaryCard').style.display = data.summary.length > 0 ? '' : 'none';
+        })
+        .catch(err => {
+            // Error sudah ditangani di atas
         });
 }
-
-// Panggil fungsi untuk memuat ringkasan penjualan produk saat halaman dimuat
-document.addEventListener('DOMContentLoaded', function() {
-    loadProductSalesSummary(document.getElementById('productSalesPeriod').value);
-});
-
-// Update ringkasan penjualan produk saat periode diubah
-document.getElementById('productSalesPeriod').addEventListener('change', function() {
-    loadProductSalesSummary(this.value);
-});
 
 // Update last update text even if empty
 function updateTimestamp() {
