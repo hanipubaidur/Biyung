@@ -93,7 +93,7 @@ async function loadTransactions() {
                     ${t.type}
                 </td>
                 <td>${t.category}</td>
-                <td class="text-end ${t.type === 'income' ? 'text-success' : 'text-danger'}">
+                <td class="text-start ${t.type === 'income' ? 'text-success' : 'text-danger'}">
                     ${t.type === 'income' ? '+' : '-'} 
                     ${new Intl.NumberFormat('id-ID').format(t.amount)}
                 </td>
@@ -247,8 +247,13 @@ async function handleFormSubmit(e) {
                 timer: 1500,
                 showConfirmButton: false
             }).then(() => {
-                // Auto reload agar stok, dropdown, dsb selalu sinkron
-                location.reload();
+                // Jangan reload seluruh halaman, cukup reload data transaksi
+                loadTransactions();
+                // Reset form setelah tambah/edit
+                form.reset();
+                // Jika ada input hidden transaction_id, hapus agar form kembali ke mode tambah
+                const idInput = form.querySelector('[name="transaction_id"]');
+                if (idInput) idInput.remove();
             });
         } else {
             throw new Error(result.message);
