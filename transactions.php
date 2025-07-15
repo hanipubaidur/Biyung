@@ -18,6 +18,9 @@ try {
     // Ambil produk aktif untuk dropdown income
     $products = $conn->query("SELECT id, name, stock, price FROM products WHERE is_active=1 ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
 
+    // Ambil data shift
+    $shifts = $conn->query("SELECT * FROM shifts ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+
 } catch(PDOException $e) {
     die("Connection failed: " . $e->getMessage());
 }
@@ -84,16 +87,12 @@ ob_start();
                                 <?php endif; ?>
                             <?php endforeach; ?>
                         </select>
-                        <div id="productStockInfo" class="form-text text-muted mt-1"></div>
-                    </div>
-                    <div class="mb-3" id="quantitySection" style="display:none;">
-                        <label class="form-label">Quantity</label>
-                        <input type="number" class="form-control" name="quantity" id="quantityInput" min="1" value="1" oninput="validateQuantity(this)">
-                        <div class="form-text text-muted" id="quantityInfo">
-                            Jumlah barang yang dibeli (hanya untuk transaksi produk).
-                            <span class="text-danger" id="quantityError"></span>
+                        <div class="form-text text-muted" id="productStockInfo">
+                            Pilih barang yang dibeli.
+                            <span class="text-danger" id="productStockError"></span>
                         </div>
-                    </div>
+                        <div id="productStockInfo" class="form-text text-muted mt-1"></div>
+                    </div>           
                     <div class="mb-3">
                         <label class="form-label">Amount</label>
                         <div class="input-group">
@@ -101,14 +100,14 @@ ob_start();
                             <input type="number" class="form-control" name="amount" id="amountInput" required>
                         </div>
                         <div class="form-text text-muted" id="amountInfo">
-                            Untuk transaksi produk, Amount = harga produk per item x quantity.
+                            Amount = harga produk per item x quantity.
                         </div>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label class="form-label">Date</label>
-                        <input type="date" class="form-control" name="date" required>
+                        <input type="date" class="form-control" name="date" required value="<?= date('Y-m-d') ?>">
                     </div>
                     <!-- Employee dropdown for Salary expense -->
                     <div class="mb-3" id="employeeSelectSection" style="display:none;">
@@ -119,6 +118,27 @@ ob_start();
                                 <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                    <!-- Quantity input for income transactions -->
+                    <div class="mb-3" id="quantitySection" style="display:none;">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control" name="quantity" id="quantityInput" min="1" value="1" oninput="validateQuantity(this)">
+                        <div class="form-text text-muted" id="quantityInfo">
+                            Jumlah barang yang dibeli.
+                            <span class="text-danger" id="quantityError"></span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Shift</label>
+                        <select class="form-select" name="shift_id" id="shiftSelect" required>
+                            <option value="">-- Select Shift --</option>
+                            <?php foreach($shifts as $shift): ?>
+                                <option value="<?= $shift['id'] ?>">
+                                    <?= htmlspecialchars($shift['name']) ?> (<?= substr($shift['start_time'],0,5) ?> - <?= substr($shift['end_time'],0,5) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text text-muted">Pilih shift transaksi ini dicatat.</div>
                     </div>
                 </div>
                 <div class="col-12">
@@ -147,6 +167,7 @@ ob_start();
                         <th>Type</th>
                         <th>Category</th>
                         <th>Amount</th>
+                        <th>Shift</th>
                         <th>Description</th>
                         <th>Actions</th>
                     </tr>
