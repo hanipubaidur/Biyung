@@ -15,6 +15,7 @@ try {
         $address = trim($_POST['address'] ?? '');
         $join_date = $_POST['join_date'] ?? null;
         $status = $_POST['status'] ?? 'active';
+        $shift_id = $_POST['shift_id'] ?? null;
 
         if (empty($name)) {
             $_SESSION['employee_flash'] = ['type' => 'error', 'msg' => 'Name is required'];
@@ -24,13 +25,13 @@ try {
 
         if ($id) {
             // Update
-            $stmt = $conn->prepare("UPDATE employees SET name=?, phone=?, address=?, join_date=?, status=? WHERE id=?");
-            $stmt->execute([$name, $phone, $address, $join_date, $status, $id]);
+            $stmt = $conn->prepare("UPDATE employees SET name=?, phone=?, address=?, join_date=?, status=?, shift_id=? WHERE id=?");
+            $stmt->execute([$name, $phone, $address, $join_date, $status, $shift_id, $id]);
             $_SESSION['employee_flash'] = ['type' => 'success', 'msg' => 'Employee updated successfully'];
         } else {
             // Insert
-            $stmt = $conn->prepare("INSERT INTO employees (name, phone, address, join_date, status) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $phone, $address, $join_date, $status]);
+            $stmt = $conn->prepare("INSERT INTO employees (name, phone, address, join_date, status, shift_id) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $phone, $address, $join_date, $status, $shift_id]);
             $_SESSION['employee_flash'] = ['type' => 'success', 'msg' => 'Employee added successfully'];
         }
         header("Location: employees.php");
@@ -58,6 +59,9 @@ try {
         $stmt->execute([$id]);
         $editEmployee = $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    // Ambil data shift untuk dropdown
+    $shifts = $conn->query("SELECT * FROM shifts ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
     $_SESSION['employee_flash'] = ['type' => 'error', 'msg' => 'Connection failed: ' . $e->getMessage()];
     header("Location: employees.php");
@@ -116,6 +120,18 @@ document.addEventListener('DOMContentLoaded', function() {
                             <option value="inactive" <?= (isset($editEmployee['status']) && $editEmployee['status'] == 'inactive') ? 'selected' : '' ?>>Inactive</option>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Default Shift</label>
+                        <select name="shift_id" class="form-select">
+                            <option value="">-- Select Shift --</option>
+                            <?php foreach($shifts as $shift): ?>
+                                <option value="<?= $shift['id'] ?>" <?= (isset($editEmployee['shift_id']) && $editEmployee['shift_id'] == $shift['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($shift['name']) ?> (<?= substr($shift['start_time'],0,5) ?> - <?= substr($shift['end_time'],0,5) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text text-muted">Pilih shift default karyawan ini.</div>
+                    </div>
                     <button type="submit" class="btn btn-primary"><?= $editEmployee ? 'Update' : 'Add' ?></button>
                     <?php if ($editEmployee): ?>
                         <a href="employees.php" class="btn btn-secondary ms-2">Cancel</a>
@@ -148,6 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <th>Phone</th>
                                 <th>Address</th>
                                 <th>Join Date</th>
+                                <th>Shift</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -159,6 +176,26 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td><?= htmlspecialchars($emp['phone']) ?></td>
                                 <td><?= htmlspecialchars($emp['address']) ?></td>
                                 <td><?= $emp['join_date'] ? date('d-m-Y', strtotime($emp['join_date'])) : '-' ?></td>
+                                <td>
+                                    <?php
+                                    if (!empty($emp['shift_id'])) {
+                                        $shift = null;
+                                        foreach ($shifts as $s) {
+                                            if ($s['id'] == $emp['shift_id']) {
+                                                $shift = $s;
+                                                break;
+                                            }
+                                        }
+                                        if ($shift) {
+                                            echo htmlspecialchars($shift['name']) . " (" . substr($shift['start_time'],0,5) . "-" . substr($shift['end_time'],0,5) . ")";
+                                        } else {
+                                            echo "-";
+                                        }
+                                    } else {
+                                        echo "-";
+                                    }
+                                    ?>
+                                </td>
                                 <td>
                                     <span class="badge <?= $emp['status'] == 'active' ? 'bg-success' : 'bg-secondary' ?>">
                                         <?= ucfirst($emp['status']) ?>
