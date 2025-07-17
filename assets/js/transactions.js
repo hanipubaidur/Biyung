@@ -103,6 +103,9 @@ async function loadTransactions() {
                 <td>${t.description || '-'}</td>
                 <td>
                     <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-warning" onclick="editTransaction(${t.id})">
+                            <i class='bx bx-edit'></i>
+                        </button>
                         <button class="btn btn-outline-danger" onclick="deleteTransaction(${t.id})">
                             <i class='bx bx-trash'></i>
                         </button>
